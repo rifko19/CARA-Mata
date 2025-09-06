@@ -1,13 +1,13 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
-import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from '@react-navigation/stack';
 import React from "react";
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import ButtonAnimated from "components/ButtonAnimated";
-import type { RootTabParamList } from "../navigation/RootTabs";
 import type { RootStackParamList } from "../navigation/RootStack";
+import type { RootTabParamList } from "../navigation/RootTabs";
 
 type Feature = {
     title: string;
@@ -113,9 +113,11 @@ type Feature = {
             Pemindaian cepat hanya dalam 2 menit
             </Text>
 
-            <Text className="mt-6 text-lg font-semibold text-gray-800">Fitur Utama</Text>
-            
-            {/* Card Navigate*/}
+            <View className="ml-3">
+                <Text className="mt-6 text- font-semibold text-gray-800">Fitur Utama</Text>
+            </View>
+
+
             <View className="mt-3">
             <View className="flex-row">
                 <FeatureCard item={features[0]} onPress={() => tabNav.navigate(features[0].to)} />
@@ -123,7 +125,7 @@ type Feature = {
             </View>
             <View className="flex-row">
                 <FeatureCard item={features[2]} onPress={() => tabNav.navigate(features[2].to)} />
-                <FeatureCard item={features[3]} onPress={() => navigation.navigate(features[3].to)} />
+                <FeatureCard item={features[3]} onPress={() => navigation.navigate('Wawasan')} />
             </View>
             </View>
 

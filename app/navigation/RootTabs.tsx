@@ -8,7 +8,6 @@ import Deteksi from "../screens/Deteksi";
 import Klinik from "../screens/Klinik";
 import Profile from "../screens/Profile";
 import Riwayat from "../screens/Riwayat";
-import Wawasan from "../screens/Wawasan";
 
 export type RootTabParamList = {
     Beranda: undefined;
@@ -45,9 +44,12 @@ export type RootTabParamList = {
             name="Riwayat"
             component={Riwayat}
             options={{
-            title: "Riwayat",
-            tabBarIcon: ({ color, size }) => (
-                <MaterialIcons name="history" color={color} size={size} />
+                headerTitleAlign: "center",
+                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+                headerShown: true,
+                title: "Riwayat",
+                tabBarIcon: ({ color, size }) => (
+                    <MaterialIcons name="history" color={color} size={size} />
             ),
             }}
         />
@@ -55,7 +57,10 @@ export type RootTabParamList = {
             name="Deteksi"
             component={Deteksi}
             options={{
-                title: "Deteksi",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+                title: "Pemindaian Mata",
                 tabBarIcon: ({ color, size }) => (
                     <View
                     style={{
@@ -77,9 +82,12 @@ export type RootTabParamList = {
             name="Klinik"
             component={Klinik}
             options={{
-            title: "Klinik",
-            tabBarIcon: ({ color, size }) => (
-                <Ionicons name="medkit-outline" color={color} size={size} />
+                headerTitleAlign: "center",
+                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+                headerShown: true,
+                title: "Klinik",
+                tabBarIcon: ({ color, size }) => (
+                    <Ionicons name="medkit-outline" color={color} size={size} />
             ),
             }}
         />
@@ -87,11 +95,11 @@ export type RootTabParamList = {
             name="Profil"
             component={Profile}
             options={{
-            title: "Profil",
-            tabBarIcon: ({ color, size }) => (
-                <Ionicons name="person-outline" color={color} size={size} />
-            ),
-            }}
+                title: "Profil",
+                tabBarIcon: ({ color, size }) => (
+                    <Ionicons name="person-outline" color={color} size={size} />
+                ),
+                }}
         />
 
         </Tab.Navigator>

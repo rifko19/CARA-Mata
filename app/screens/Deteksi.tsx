@@ -16,10 +16,6 @@ export default function Deteksi() {
         return (
         <SafeAreaView className="flex-1 bg-sky-50">
             <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="px-5">
-            <View className="mt-10">
-                <Text className="text-3xl font-extrabold text-blue-700">Pemindaian Mata</Text>
-            </View>
-
             <View className="relative mt-6 bg-gray-200 h-56 rounded-xl">
                 <Text className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-semibold">
                 Tahan dengan stabil untuk pengambilan gambar
@@ -41,9 +37,6 @@ export default function Deteksi() {
 
     return (
         <SafeAreaView className="flex-1 bg-sky-50">
-            <View className="pt-10 pb-4 bg-white">
-                <Text className="text-3xl text-center font-extrabold text-blue-700">Pemindaian Mata</Text>
-            </View>
         <ScrollView className="px-5">
             {/* Kamera Preview */}
             <View className="relative mt-6 bg-gray-200 h-72 rounded-xl ">

@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import RootTabs from "./RootTabs";
 import Wawasan from "../screens/Wawasan";
+import RootTabs from "./RootTabs";
 
 export type RootStackParamList = {
   Tabs: undefined;
@@ -16,7 +16,12 @@ export default function RootStack() {
         screenOptions={{ headerShown: false, animation: "slide_from_right" }}
         >
         <Stack.Screen name="Tabs" component={RootTabs} />
-        <Stack.Screen name="Wawasan" component={Wawasan} />
+        <Stack.Screen name="Wawasan" component={Wawasan} 
+          options={{ 
+            headerTitleAlign: "center",
+            headerShown: true,
+            headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+            animation: "fade_from_bottom"}}/>
         </Stack.Navigator>
     );
     }
