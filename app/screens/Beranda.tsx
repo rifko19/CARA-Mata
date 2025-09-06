@@ -1,0 +1,146 @@
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useNavigation } from "@react-navigation/native";
+import React from "react";
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
+import ButtonAnimated from "components/ButtonAnimated";
+import type { RootTabParamList } from "../navigation/RootTabs";
+import type { RootStackParamList } from "../navigation/RootStack";
+
+type Feature = {
+    title: string;
+    subtitle: string;
+    icon: React.ReactNode;
+    bg: string;
+    to: keyof RootTabParamList;
+    };
+    const FeatureCard = ({ item, onPress }: { item: Feature; onPress: () => void }) => {
+    
+        return (
+        <TouchableOpacity
+        activeOpacity={0.9}
+        className={`flex-1 overflow-hidden rounded-2xl ${item.bg} m-2 shadow-sm`}
+        style={{
+        flex: 1,
+        margin: 8,
+        }}
+        onPress={onPress}
+        >
+        <ButtonAnimated>
+        <View className={`items-center justify-center ${item.bg} py-4`}>
+            {item.icon}
+        </View>
+
+        <View className="items-center justify-center p-4 bg-white">
+            <Text className="text-base font-semibold text-gray-800 text-center">
+            {item.title}
+            </Text>
+            <Text className="mt-1 text-xs text-gray-500 text-center">
+            {item.subtitle}
+            </Text>
+        </View>
+        </ButtonAnimated>
+        </TouchableOpacity>
+        );
+        };
+    
+    export default function Beranda() {
+    const tabNav = useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+    
+    const features: Feature[] = [
+    {
+        title: "Riwayat",
+        subtitle: "Lihat pemindaian sebelumnya",
+        bg: "bg-yellow-100",
+        to: "Riwayat",
+        icon: <Ionicons name="refresh-outline" size={23} color="#F59E0B" />,
+        },
+        {
+        title: "Data Pasien",
+        subtitle: "Kelola informasi pribadi",
+        bg: "bg-green-100",
+        to: "Profil",
+        icon: <Ionicons name="document-text-outline" size={23} color="#10B981" />,
+        },
+        {
+        title: "Klinik Terdekat",
+        subtitle: "Temukan dokter mata",
+        bg: "bg-purple-100",
+        to: "Klinik",
+        icon: <Ionicons name="location-outline" size={23} color="#6B21A8" />,
+        },
+        {
+        title: "Wawasan",
+        subtitle: "Pahami kesehatan mata",
+        bg: "bg-blue-100",
+        to: "Wawasan",
+        icon: <MaterialCommunityIcons name="book-alert" size={23} color="#2563EB" />,
+        },
+    ];
+    
+    return (
+        <SafeAreaView className="flex-1 bg-sky-50">
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="px-5">
+            {/* Header */}
+            <View className="items-center mt-24">
+            {/* <View className="h-16 w-16 items-center justify-center rounded-full bg-white shadow">
+                <Ionicons name="eye-outline" size={28} color="#0EA5E9" />
+            </View> */}
+
+            <Text className="mt-4 text-3xl font-extrabold text-blue-700">CARA-Mata</Text>
+            <Text className="mt-1 text-sm text-gray-500">
+                Cek Awal Risiko Abnormal pada Mata
+            </Text>
+            </View>
+            
+            <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => tabNav.navigate("Deteksi")}
+            className="mt-6 flex-row items-center justify-center rounded-3xl bg-blue-600 px-5 py-4 shadow-lg"
+            >
+            <View className="flex-row items-center">
+                <Ionicons name="camera-outline" size={23} color="#fff" />
+                <Text className="ml-3 mr-3 text-lg font-extrabold text-white">
+                Mulai Pengecekan Mata
+                </Text>
+            </View>
+            <Ionicons name="arrow-forward" size={19} color="#fff" />
+            </TouchableOpacity>
+            <Text className="mt-2 text-center text-xs text-gray-500">
+            Pemindaian cepat hanya dalam 2 menit
+            </Text>
+
+            <Text className="mt-6 text-lg font-semibold text-gray-800">Fitur Utama</Text>
+            
+            {/* Card Navigate*/}
+            <View className="mt-3">
+            <View className="flex-row">
+                <FeatureCard item={features[0]} onPress={() => tabNav.navigate(features[0].to)} />
+                <FeatureCard item={features[1]} onPress={() => tabNav.navigate(features[1].to)} />
+            </View>
+            <View className="flex-row">
+                <FeatureCard item={features[2]} onPress={() => tabNav.navigate(features[2].to)} />
+                <FeatureCard item={features[3]} onPress={() => navigation.navigate(features[3].to)} />
+            </View>
+            </View>
+
+            {/* Tentang */}
+            <View className="mt-5 overflow-hidden rounded-2xl bg-white shadow">
+            <View className="bg-blue-600 px-4 py-3">
+                <Text className="text-white font-semibold">Tentang CARAMata</Text>
+            </View>
+            <View className="px-4 py-3">
+                <Text className="text-sm leading-5 text-gray-600">
+                CARAMata membantu mendeteksi tanda-tanda awal gangguan mata secara cepat
+                memakai kamera ponsel dan model analitik sederhana. Informasi bukan pengganti
+                diagnosis dokter. Konsultasikan hasil dengan klinik terdekat untuk tindak lanjut.
+                </Text>
+            </View>
+            </View>
+        </ScrollView>
+        </SafeAreaView>
+    );
+    }
