@@ -1,91 +1,236 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from '@react-navigation/stack';
-import { CameraType, CameraView, useCameraPermissions } from "expo-camera"; // Import dari expo-camera
-import { useState } from "react";
-import { Button, SafeAreaView, ScrollView, Text, TouchableOpacity, View, } from "react-native";
-import type { RootStackParamList } from "../../navigation/RootStack";
+import {
+    CameraMode,
+    CameraType,
+    CameraView,
+    useCameraPermissions,
+    } from "expo-camera";
+    import { useRef, useState } from "react";
+    import { Button, Pressable, StyleSheet, Text, View, Image, Alert } from "react-native";
+    import AntDesign from "@expo/vector-icons/AntDesign";
+    import Feather from "@expo/vector-icons/Feather";
+    import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+    import axios from "axios"; // Untuk mengirim gambar ke API Roboflow
 
-export default function Deteksi() {
-    const [facing, setFacing] = useState<CameraType>('back');
+    export default function App() {
     const [permission, requestPermission] = useCameraPermissions();
-    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+    const ref = useRef<CameraView>(null);
+    const [uri, setUri] = useState<string | null>(null);
+    const [mode, setMode] = useState<CameraMode>("picture");
+    const [facing, setFacing] = useState<CameraType>("back");
+    const [recording, setRecording] = useState(false);
+    const [predictions, setPredictions] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
 
     if (!permission) {
-    return <View />;
-}
+        return null;
+    }
 
     if (!permission.granted) {
         return (
-        <SafeAreaView className="flex-1 bg-sky-50">
-            <ScrollView contentContainerStyle={{ paddingBottom: 24 }} className="px-5">
-            <View className="relative mt-6 bg-gray-200 h-56 rounded-xl">
-                <Text className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-semibold">
-                Tahan dengan stabil untuk pengambilan gambar
-                </Text>
-            </View>
-
-            <Text className="text-center text-sm text-gray-500">
-                Kami butuh izin untuk mengakses kamera perangkat Anda.
+        <View style={styles.container}>
+            <Text style={{ textAlign: "center" }}>
+            We need your permission to use the camera
             </Text>
-            <Button onPress={requestPermission} title="Grant Permission" />
-            </ScrollView>
-        </SafeAreaView>
+            <Button onPress={requestPermission} title="Grant permission" />
+        </View>
         );
     }
-    function toggleCameraFacing() {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
-    }
 
+    // Fungsi untuk mengambil gambar dan mengirim ke API Roboflow
+    const takePicture = async () => {
+        const photo = await ref.current?.takePictureAsync();
+        if (photo?.uri) {
+        setUri(photo.uri);
+        sendToRoboflow(photo.uri);
+        }
+    };
+
+    // Fungsi untuk mengirim gambar ke API Roboflow dan mendapatkan hasil deteksi
+    const sendToRoboflow = async (uri: string) => {
+  setLoading(true); // Mulai loading
+  try {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+
+    const formData = new FormData();
+    formData.append("image", blob, "image.jpg");
+
+    const roboflowResponse = await axios.post(
+        "https://serverless.roboflow.com/cataract-lt8ek/2",
+        formData,
+        {
+            headers: {
+            "Content-Type": "multipart/form-data",
+            },
+            params: {
+            api_key: "Lrpwni9G7ReyNWL7mPEb",
+            },
+            timeout: 15000,
+        }
+        );
+
+        console.log("API Response:", roboflowResponse.data);
+
+        if (roboflowResponse.data && roboflowResponse.data.predictions) {
+        setPredictions(roboflowResponse.data.predictions);
+        } else {
+        throw new Error("No predictions received from the API");
+        }
+    } catch (error) {
+        console.error("Error sending image to Roboflow:", error);
+
+        if (axios.isAxiosError(error)) {
+        if (error.response) {
+            Alert.alert("Error API", `Status: ${error.response.status}\nData: ${JSON.stringify(error.response.data)}`);
+        } else if (error.request) {
+            Alert.alert("Error Jaringan", "Tidak ada respons dari server. Periksa koneksi internet Anda.");
+        } else {
+            Alert.alert("Error", `Permintaan error: ${error.message}`);
+        }
+        } else if (error instanceof Error) {
+        Alert.alert("Error", `Terjadi kesalahan saat mengirim gambar: ${error.message}`);
+        } else {
+        Alert.alert("Error", "Terjadi kesalahan tidak dikenal saat mengirim gambar.");
+        }
+    } finally {
+        setLoading(false); // Hentikan loading
+    }
+    };
+
+
+    // Fungsi untuk merekam video
+    const recordVideo = async () => {
+        if (recording) {
+        setRecording(false);
+        ref.current?.stopRecording();
+        return;
+        }
+        setRecording(true);
+        const video = await ref.current?.recordAsync();
+        console.log({ video });
+    };
+
+    // Fungsi untuk toggle antara mode foto dan video
+    const toggleMode = () => {
+        setMode((prev) => (prev === "picture" ? "video" : "picture"));
+    };
+
+    // Fungsi untuk toggle antara kamera depan dan belakang
+    const toggleFacing = () => {
+        setFacing((prev) => (prev === "back" ? "front" : "back"));
+    };
+
+    const renderPicture = (uri: string) => {
+        return (
+        <View>
+            <Image
+            source={{ uri }}
+            style={{ width: 300, aspectRatio: 1 }}
+            />
+            <Button onPress={() => setUri(null)} title="Take another picture" />
+        </View>
+        );
+    };
+
+    const renderCamera = () => {
+        return (
+        <View style={styles.cameraContainer}>
+            <CameraView
+            style={styles.camera}
+            ref={ref}
+            mode={mode}
+            facing={facing}
+            mute={false}
+            responsiveOrientationWhenOrientationLocked
+            />
+            <View style={styles.shutterContainer}>
+            <Pressable onPress={toggleMode}>
+                {mode === "picture" ? (
+                <AntDesign name="picture" size={32} color="white" />
+                ) : (
+                <Feather name="video" size={32} color="white" />
+                )}
+            </Pressable>
+            <Pressable onPress={mode === "picture" ? takePicture : recordVideo}>
+                {({ pressed }) => (
+                <View
+                    style={[
+                    styles.shutterBtn,
+                    {
+                        opacity: pressed ? 0.5 : 1,
+                    },
+                    ]}
+                >
+                    <View
+                    style={[
+                        styles.shutterBtnInner,
+                        {
+                        backgroundColor: mode === "picture" ? "white" : "red",
+                        },
+                    ]}
+                    />
+                </View>
+                )}
+            </Pressable>
+            <Pressable onPress={toggleFacing}>
+                <FontAwesome6 name="rotate-left" size={32} color="white" />
+            </Pressable>
+            </View>
+        </View>
+        );
+    };
 
     return (
-        <SafeAreaView className="flex-1 bg-sky-50">
-        <ScrollView className="px-5 mt-5">
-            {/* Kamera Preview */}
-            <View className="relative mt-6 bg-gray-200 h-72 rounded-xl ">
-                <CameraView
-                    style={{ flex: 1, borderRadius: 16 }}
-                    facing={facing}
-                />
-                    {/* <View className="absolute border-2 border-green-500 rounded-full w-40 h-40 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></View>
-                    <Text className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white font-semibold">
-                    Tahan dengan stabil untuk pengambilan gambar
-                    </Text> */}
-                    <TouchableOpacity
-                        onPress={toggleCameraFacing}
-                        className="absolute top-4 right-4 p-2 rounded-full shadow"
-                        activeOpacity={0.7}>
-                            <Ionicons name="camera-reverse-outline" size={33} color="#fff" />
-                    </TouchableOpacity>
-                {/* </CameraView> */}
-            </View>
+        <View style={styles.container}>
+        {uri ? renderPicture(uri) : renderCamera()}
 
-            <View className="mt-6 bg-white rounded-xl p-4 shadow-md">
-                <Text className="text-lg font-semibold text-gray-800">Kondisi Pencahayaan</Text>
-                <Text className="mt-1 text-sm text-gray-500">Penting untuk hasil yang akurat</Text>
-                {/* Slider */}
-                <View className="mt-3">
-                    <Text className="text-xs text-gray-500">Buruk</Text>
-                    <View className="w-full h-2 bg-gray-300 rounded-full mt-2">
-                    <View className="h-2 bg-green-500 rounded-full" style={{ width: "70%" }} />
-                    </View>
-                    <Text className="text-xs text-gray-500 mt-2">Baik</Text>
-                </View>
-            </View>
-
-            <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate("Proses")}
-            className="mt-6 items-center justify-center rounded-3xl bg-blue-600 py-4 shadow-lg"
-            >
-            <View className="flex-row items-center">
-                <Ionicons name="camera-outline" size={23} color="#fff" />
-                <Text className="ml-3 text-center text-xl font-semibold text-white">
-                Ambil Gambar
+        {/* Menampilkan hasil deteksi */}
+        {predictions && (
+            <View style={{ marginTop: 20 }}>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>Predictions:</Text>
+            {predictions.map((prediction: any, index: number) => (
+                <Text key={index}>
+                {prediction.class}: {Math.round(prediction.confidence * 100)}%
                 </Text>
+            ))}
             </View>
-            </TouchableOpacity>
-        </ScrollView>
-        </SafeAreaView>
+        )}
+        </View>
     );
     }
+
+    const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#fff",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    cameraContainer: StyleSheet.absoluteFillObject,
+    camera: StyleSheet.absoluteFillObject,
+    shutterContainer: {
+        position: "absolute",
+        bottom: 44,
+        left: 0,
+        width: "100%",
+        alignItems: "center",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingHorizontal: 30,
+    },
+    shutterBtn: {
+        backgroundColor: "transparent",
+        borderWidth: 5,
+        borderColor: "white",
+        width: 85,
+        height: 85,
+        borderRadius: 45,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    shutterBtnInner: {
+        width: 70,
+        height: 70,
+        borderRadius: 50,
+    },
+    });

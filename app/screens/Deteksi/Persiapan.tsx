@@ -3,10 +3,10 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useState } from "react";
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import type { RootStackParamList } from "../../navigation/RootStack";
+import { DeteksiStackParamList } from "app/navigation/DeteksiStack";
 
 export default function InstruksiPemindaian() {
-    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+    const navigation = useNavigation<StackNavigationProp<DeteksiStackParamList>>();
 
     return (
         <SafeAreaView className="flex-1 bg-sky-50">

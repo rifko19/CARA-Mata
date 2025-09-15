@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, View, ActivityIndicator } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from "../../navigation/RootStack";  // Pastikan path sesuai dengan proyek Anda
+import { DeteksiStackParamList } from "app/navigation/DeteksiStack";
 
 export default function PemindaianProgress() {
     const [progress, setProgress] = useState(0);
-    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+    const navigation = useNavigation<StackNavigationProp<DeteksiStackParamList>>();
 
     // Simulasi progress
     useEffect(() => {

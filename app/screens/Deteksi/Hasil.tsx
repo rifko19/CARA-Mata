@@ -4,7 +4,6 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ProgressBar } from "react-native-paper";
-import type { RootStackParamList } from "../../navigation/RootStack";
 import type { RootTabParamList } from "../../navigation/RootTabs";
 import { DeteksiStackParamList } from "app/navigation/DeteksiStack";
 
