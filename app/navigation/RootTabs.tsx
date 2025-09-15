@@ -1,21 +1,20 @@
-// app/navigation/RootTabs.tsx
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View } from 'react-native';
 
 import Beranda from "../screens/Beranda";
-import Deteksi from "../screens/Deteksi";
 import Klinik from "../screens/Klinik";
 import Profile from "../screens/Profile";
 import Riwayat from "../screens/Riwayat";
+import DeteksiStack from "./DeteksiStack";
 
 export type RootTabParamList = {
-    Beranda: undefined;
-    Riwayat: undefined;
-    Deteksi: undefined;
-    Klinik: undefined;
-    Profil: undefined;
-    Wawasan: undefined;
+    Beranda: any;
+    Riwayat: any;
+    DeteksiStack: any;
+    Klinik: any;
+    Profil: any;
+    Wawasan: any;
     };
 
     const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -44,50 +43,50 @@ export type RootTabParamList = {
             name="Riwayat"
             component={Riwayat}
             options={{
-                headerTitleAlign: "center",
-                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-                headerShown: true,
-                title: "Riwayat",
-                tabBarIcon: ({ color, size }) => (
-                    <MaterialIcons name="history" color={color} size={size} />
+            headerTitleAlign: "center",
+            headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+            headerShown: true,
+            title: "Riwayat",
+            tabBarActiveTintColor: "#F59E0B",
+            tabBarIcon: ({ color, size }) => (
+                <MaterialIcons name="history" color={color} size={size} />
             ),
             }}
         />
         <Tab.Screen
-            name="Deteksi"
-            component={Deteksi}
+            name="DeteksiStack" // Gunakan nama stack navigator di sini
+            component={DeteksiStack}
             options={{
-                headerShown: true,
-                headerTitleAlign: "center",
-                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-                title: "Pemindaian Mata",
-                tabBarIcon: ({ color, size }) => (
-                    <View
-                    style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 25,
-                        backgroundColor: '#2563EB',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        marginBottom: 30,
-                    }}
-                    >
-                        <Ionicons name="camera-outline" color="white" size={25} />
-                    </View>
-                ),
+            headerShown: false,
+            title: "Pemindaian", // Judul tab
+            tabBarIcon: ({ color, size }) => (
+                <View
+                style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: 25,
+                    backgroundColor: '#2563EB',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginBottom: 30,
+                }}
+                >
+                <Ionicons name="camera-outline" color="white" size={25} />
+                </View>
+            ),
             }}
         />
         <Tab.Screen
             name="Klinik"
             component={Klinik}
             options={{
-                headerTitleAlign: "center",
-                headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-                headerShown: true,
-                title: "Klinik",
-                tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="medkit-outline" color={color} size={size} />
+            headerTitleAlign: "center",
+            headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+            headerShown: true,
+            title: "Klinik",
+            tabBarActiveTintColor: "#6B21A8",
+            tabBarIcon: ({ color, size }) => (
+                <Ionicons name="medkit-outline" color={color} size={size} />
             ),
             }}
         />
@@ -95,13 +94,13 @@ export type RootTabParamList = {
             name="Profil"
             component={Profile}
             options={{
-                title: "Profil",
-                tabBarIcon: ({ color, size }) => (
-                    <Ionicons name="person-outline" color={color} size={size} />
-                ),
-                }}
+            title: "Profil",
+            tabBarActiveTintColor: "#10B981",
+            tabBarIcon: ({ color, size }) => (
+                <Ionicons name="person-outline" color={color} size={size} />
+            ),
+            }}
         />
-
         </Tab.Navigator>
     );
     }

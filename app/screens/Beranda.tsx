@@ -98,7 +98,7 @@ type Feature = {
             
             <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => tabNav.navigate("Deteksi")}
+            onPress={() => tabNav.navigate("DeteksiStack")}
             className="mt-6 flex-row items-center justify-center rounded-3xl bg-blue-600 px-5 py-4 shadow-lg"
             >
             <View className="flex-row items-center">
