@@ -27,8 +27,17 @@ export default function WelcomeScreen() {
         <Text className="text-3xl font-bold text-gray-800 text-center mb-4">
             Selamat Datang!
         </Text>
-        <Text className="text-base text-gray-600 text-center mb-12">
-            Kesehatan mata Anda, kendali Anda. Mata sehat, hidup lebih bahagia.
+        <Text className="text-base font-semibold text-green-700 text-center">
+            Kesehatan mata Anda, kendali Anda.
+        </Text>
+        <Text className="text-base font-semibold text-green-700 text-center mb-4">
+            Mata sehat, hidup lebih bahagia.
+        </Text>
+        <Text className="text-base font-thin text-center">
+            Login untuk mendapatkan
+        </Text>
+        <Text className="text-base font-thin text-center">
+            pengalaman yang lebih maksimal
         </Text>
         </View>
 
