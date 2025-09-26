@@ -15,7 +15,7 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export default function RootStack({ isAuthenticated }: { isAuthenticated: boolean }) {
+export default function RootStack() {
   return (
     <Stack.Navigator
       initialRouteName="Welcome"
@@ -26,11 +26,7 @@ export default function RootStack({ isAuthenticated }: { isAuthenticated: boolea
           headerShown: false,
         }}
       />
-      {/* <Stack.Screen name="Welcome" component={Login}
-        options={{
-          headerShown: false,
-        }}
-      /> */}
+      
       {/* RootTabs Screen (Halaman utama setelah Welcome) */}
       <Stack.Screen name="Tabs" component={RootTabs} />
       
@@ -42,11 +38,7 @@ export default function RootStack({ isAuthenticated }: { isAuthenticated: boolea
           headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
         }}
       />
-      <Stack.Screen name="Login" component={Login}
-        // options={{
-        //   animation:
-        // }}
-      />
+      <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign}/>
     </Stack.Navigator>
   );

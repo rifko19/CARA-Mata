@@ -1,17 +1,16 @@
 import React from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
-import RootStack from "./RootStack"; // Import RootStack tanpa NavigationContainer di dalamnya
+import RootStack from "./RootStack";
 
 const theme = {
     ...DefaultTheme,
     colors: { ...DefaultTheme.colors, background: "transparent" },
 };
 
-
-export default function AppNavigator({ isAuthenticated }: { isAuthenticated: boolean }) {
+export default function AppNavigator() {
     return (
         <NavigationContainer theme={theme}>
-            <RootStack isAuthenticated={isAuthenticated} />
+            <RootStack />
         </NavigationContainer>
     );
 }

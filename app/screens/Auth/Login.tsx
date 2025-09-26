@@ -1,3 +1,4 @@
+//  File Login
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
@@ -14,7 +15,6 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false); // State to handle loading
 
-    // Handle sign in
     const handleSignIn = async () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please fill in both email and password');
