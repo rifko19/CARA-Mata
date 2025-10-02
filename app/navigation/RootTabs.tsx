@@ -105,7 +105,9 @@ export default function RootTabs() {
                 name="DeteksiStack"
                 component={DeteksiStack}
                 options={{
-                    headerShown: false,
+                    headerTitleAlign: "center",
+                    headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
+                    headerShown: true,
                     title: "Pemindaian",
                     tabBarIcon: ({ color, size }) => (
                         <View
