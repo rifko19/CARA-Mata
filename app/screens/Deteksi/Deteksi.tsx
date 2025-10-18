@@ -1,24 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
+import Slider from '@react-native-community/slider';
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
-import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Button,
+    Dimensions,
     Image,
     SafeAreaView,
     ScrollView,
+    StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    StyleSheet,
-    Dimensions
+    View
 } from "react-native";
 import { loadTensorflowModel } from "react-native-fast-tflite";
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
-import Slider from '@react-native-community/slider';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const IMAGE_DISPLAY_HEIGHT = 288; // h-72
@@ -39,7 +38,7 @@ interface DetectionResult {
 // Dimensi input tensor: [1, 3, 640, 640] atau [1, 640, 640, 3]
 type ModelInputType = Float32Array; 
 const INPUT_SIZE = 640;
-const TENSOR_SIZE = INPUT_SIZE * INPUT_SIZE * 3; // 640 * 640 * 3 = 1,228,800
+const TENSOR_SIZE = INPUT_SIZE * INPUT_SIZE * 3;
 
 export default function Deteksi() {
     const [facing, setFacing] = useState<CameraType>('back');
@@ -86,40 +85,23 @@ export default function Deteksi() {
             
             Alert.alert(
                 'Model Loading', 
-                'Model TFLite tidak dapat dimuat. Menggunakan mode simulasi untuk demo.',
-                [{ text: 'OK' }]
+                'Model TFLite tidak dapat dimuat.'
             );
-            
-            setTimeout(() => {
-                setIsModelLoaded(true);
-                console.log('Using simulation mode');
-            }, 1000);
         }
     };
 
-    /**
-     * FUNGSI KRITIS: KONVERSI GAMBAR (JPEG/PNG) MENJADI TENSOR PIXEL FLOAT32.
-     * * Saat ini, kami tidak memiliki alat bawaan untuk secara langsung mengkonversi 
-     * Base64/File mentah menjadi array piksel Float32 sehingga kami menggunakan 
-     * simulasi placeholder untuk memenuhi tipe data.
-     * * UNTUK IMPLEMENTASI NYATA: Anda harus menulis kode yang:
-     * 1. Decode Base64 (mengandung JPEG) menjadi data piksel mentah (R, G, B, A).
-     * 2. Membuat Float32Array dengan ukuran 640*640*3.
-     * 3. Mengisi array ini dengan nilai (pixel / 255.0) [NORMALISASI]
-     * 4. Reshape jika diperlukan (misalnya dari [H, W, C] ke [C, H, W]).
-     */
+
     const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
         try {
             console.log('Preprocessing image...');
-            
-            // 1. Resize dan dapatkan Base64
+
             const manipResult = await manipulateAsync(
                 imageUri,
                 [{ resize: { width: INPUT_SIZE, height: INPUT_SIZE } }],
                 { 
-                    compress: 1, 
+                    compress: 1,
                     format: SaveFormat.JPEG,
-                    base64: true 
+                    base64: true
                 }
             );
 
@@ -129,7 +111,6 @@ export default function Deteksi() {
                 throw new Error("Gagal mendapatkan data Base64 gambar.");
             }
 
-            // ⚠️ Placeholder untuk TENSOR INPUT
             console.warn("⚠️ Placeholder Tensor digunakan. Deteksi AI nyata mungkin gagal tanpa implementasi Pixel Decoding & Normalisasi.");
             
             return new Float32Array(TENSOR_SIZE); 
@@ -142,111 +123,60 @@ export default function Deteksi() {
 
     const runInference = async (imageBytes: ModelInputType): Promise<DetectionResult> => {
         if (!model) {
-            console.log('Running simulation mode...');
-            return simulateDetection();
+            throw new Error('Model belum dimuat');
         }
 
         try {
             console.log('Running TFLite inference...');
             
-            // Output dari model.run() di sini mungkin adalah objek map 
-            // jika model memiliki banyak output (walaupun untuk fast-tflite biasanya array)
-            const modelOutput = await model.run(imageBytes);
+            const outputs = model.run([imageBytes]);
             
-            let output: any;
-
-            // Memeriksa jika output adalah objek dengan key numerik (ini sering terjadi di Fast-TFLite)
-            if (typeof modelOutput === 'object' && modelOutput !== null && !Array.isArray(modelOutput)) {
-                // Asumsi output utama berada di key pertama (misalnya key '0' atau 'output_0')
-                const keys = Object.keys(modelOutput).sort();
-                if (keys.length > 0) {
-                    output = modelOutput[keys[0]];
-                    console.log(`Using model output key: ${keys[0]}`);
-                } else {
-                    throw new Error("Model output is an empty object.");
-                }
+            console.log('Model outputs:', outputs);
+            
+            let outputArray: Float32Array;
+            
+            if (Array.isArray(outputs)) {
+                outputArray = outputs[0];
+            } else if (outputs[0]) {
+                outputArray = outputs[0];
             } else {
-                output = modelOutput;
+                throw new Error('Invalid model output format');
             }
-
-            if (!output || !output.length) {
-                throw new Error("Model output is not a valid array/typed array with length.");
-            }
-
-            const predictions = parseYOLOOutput(output);
             
-            // ... (Logika penentuan hasil deteksi tetap sama)
-
-            const hasCataract = predictions.some((pred: any) => 
+            const predictions = parseYOLOOutput(outputArray);
+            
+            const hasCataract = predictions.some(pred => 
                 pred.class === 'cataract' && pred.confidence > 0.5
             );
             
             const maxConfidence = predictions.length > 0 
-                ? Math.max(...predictions.map((p: any) => p.confidence as number))
+                ? Math.max(...predictions.map(p => p.confidence))
                 : 0;
 
             const result: DetectionResult = {
                 imageUri: capturedImage || '',
                 prediction: hasCataract ? 'cataract' : 'normal',
                 confidence: maxConfidence,
-                detections: predictions as Array<{
-                    class: string;
-                    confidence: number;
-                    bbox: number[];
-                }>,
+                detections: predictions,
                 timestamp: new Date().toISOString()
             };
 
             return result;
             
         } catch (error) {
-            console.error('Inference error, switching to simulation mode:', error);
-            // Kembali ke simulasi jika TFLite gagal (misalnya karena format tensor tidak tepat atau tipe output salah)
-            return simulateDetection();
+            console.error('Inference error:', error);
+            throw error;
         }
     };
 
-    const simulateDetection = (): DetectionResult => {
-        // ... (Fungsi simulasi tetap sama)
-        const isCataract = Math.random() > 0.6;
-        const numDetections = Math.floor(Math.random() * 2) + 1;
-        
-        const detections = [];
-        for (let i = 0; i < numDetections; i++) {
-            detections.push({
-                class: isCataract ? 'cataract' : 'normal',
-                confidence: 0.65 + Math.random() * 0.3,
-                bbox: [
-                    0.3 + Math.random() * 0.4, // x center
-                    0.3 + Math.random() * 0.4, // y center
-                    0.2 + Math.random() * 0.2, // width
-                    0.2 + Math.random() * 0.2  // height
-                ]
-            });
-        }
-        
-        return {
-            imageUri: capturedImage || '',
-            prediction: isCataract ? 'cataract' : 'normal',
-            confidence: Math.max(...detections.map(d => d.confidence)),
-            detections: detections,
-            timestamp: new Date().toISOString()
-        };
-    };
 
     const parseYOLOOutput = (output: any): Array<{class: string; confidence: number; bbox: number[]}> => {
-        // Logika post-processing YOLO
         const detections: Array<{class: string; confidence: number; bbox: number[]}> = [];
         const confidenceThreshold = 0.3;
         
         try {
-            // Memastikan output yang diterima adalah array atau typed array
             if (output && output.length && (Array.isArray(output) || output.buffer instanceof ArrayBuffer)) {
-                
-                // Konversi aman ke array number
                 const outputArray = Array.from(output) as number[]; 
-                // Asumsi output adalah array datar di mana setiap 6 elemen 
-                // adalah [x, y, w, h, confidence, classId]
                 const itemSize = 6; 
                 const numDetections = outputArray.length / itemSize;
                 
@@ -267,7 +197,7 @@ export default function Deteksi() {
                             detections.push({
                                 class: className,
                                 confidence: confidence,
-                                bbox: [x, y, w, h] // Bbox dalam format normalisasi [0-1]
+                                bbox: [x, y, w, h]
                             });
                         }
                     }
@@ -282,14 +212,11 @@ export default function Deteksi() {
             console.error('Error parsing YOLO output:', error);
             return [];
         }
-    };
-    
-    // ... (renderBoundingBoxes, showDetectionResult, resetDetection, permissions check, dan JSX/UI tetap sama)
+    }; 
 
     const renderBoundingBoxes = () => {
         if (!detectionResult || detectionResult.detections.length === 0) return null;
 
-        // Hitung display size (Lebar dan Tinggi yang digunakan di Image)
         const displayWidth = SCREEN_WIDTH - 40; // padding 20px each side
         const displayHeight = IMAGE_DISPLAY_HEIGHT;
         
@@ -595,19 +522,6 @@ export default function Deteksi() {
                     )}
                 </View>
 
-                {/* Kondisi Pencahayaan */}
-                <View className="mt-6 bg-white rounded-xl p-4 shadow-md">
-                    <Text className="text-lg font-semibold text-gray-800">Kondisi Pencahayaan</Text>
-                    <Text className="mt-1 text-sm text-gray-500">Sangat penting untuk akurasi deteksi</Text>
-                    <View className="mt-3">
-                        <Text className="text-xs text-gray-500">Buruk</Text>
-                        <View className="w-full h-2 bg-gray-300 rounded-full mt-2">
-                            {/* Placeholder untuk indikator pencahayaan real-time */}
-                            <View className="h-2 bg-green-500 rounded-full" style={{ width: "70%" }} />
-                        </View>
-                        <Text className="text-xs text-gray-500 mt-2 text-right">Optimal</Text>
-                    </View>
-                </View>
 
                 {/* Hasil Deteksi Detail */}
                 {detectionResult && (
@@ -684,7 +598,7 @@ export default function Deteksi() {
                     disabled={isProcessing || !isModelLoaded}
                     className={`mt-6 items-center justify-center rounded-3xl py-4 shadow-lg mb-6 ${
                         isProcessing || !isModelLoaded 
-                            ? 'bg-blue-400' 
+                            ? 'bg-blue-600' 
                             : 'bg-blue-600'
                     }`}
                 >
