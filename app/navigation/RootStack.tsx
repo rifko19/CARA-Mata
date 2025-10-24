@@ -4,6 +4,8 @@ import RootTabs from "./RootTabs";
 import Wawasan from "../screens/Wawasan";
 import Login from "../screens/Auth/Login";
 import Sign from "../screens/Auth/Sign-Up"
+import ProfileEdit from "../screens/ProfileEdit"; // Ganti 'app/screens/ProfileEdit' jika path berbeda
+import { useAuth } from "../services/AuthContext"; // <-- Import useAuth
 
 export type RootStackParamList = {
   Welcome: any;
@@ -11,14 +13,18 @@ export type RootStackParamList = {
   Wawasan: any;
   Login: any;
   Sign: any;
+  ProfileEdit: any;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStack() {
+  const { isAuthenticated, isGuest } = useAuth();
+  const initialRouteName = (isAuthenticated || isGuest) ? "Tabs" : "Welcome";
+
   return (
     <Stack.Navigator
-      initialRouteName="Welcome"
+      initialRouteName={initialRouteName}
       screenOptions={{ headerShown: false, animation: "fade" }}
     >
       <Stack.Screen name="Welcome" component={Welcome}
@@ -26,11 +32,7 @@ export default function RootStack() {
           headerShown: false,
         }}
       />
-      
-      {/* RootTabs Screen (Halaman utama setelah Welcome) */}
       <Stack.Screen name="Tabs" component={RootTabs} />
-      
-      {/* Wawasan Screen */}
       <Stack.Screen name="Wawasan" component={Wawasan}
         options={{
           headerTitleAlign: "center",
@@ -40,6 +42,7 @@ export default function RootStack() {
       />
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign}/>
+      <Stack.Screen name="ProfileEdit" component={ProfileEdit} />
     </Stack.Navigator>
   );
 }

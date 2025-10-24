@@ -4,16 +4,15 @@ import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { auth } from '../../services/firebaseConfig';
-import { signInWithEmailAndPassword } from "firebase/auth"; // Firebase Auth function
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginScreen() {
     const navigation = useNavigation();
     const tabNav = useNavigation();
 
-    // State to handle inputs
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false); // State to handle loading
+    const [loading, setLoading] = useState(false);
 
     const handleSignIn = async () => {
         if (!email || !password) {
@@ -21,10 +20,8 @@ export default function LoginScreen() {
             return;
         }
 
-        setLoading(true); // Start loading animation
-
+        setLoading(true); 
         try {
-            // Firebase Auth sign-in
             await signInWithEmailAndPassword(auth, email, password);
 
             navigation.reset({
@@ -32,19 +29,18 @@ export default function LoginScreen() {
                 routes: [{ name: 'Tabs' as never}]
             });
         } catch (error) {
-            // Ensure the error is of type 'Error' before accessing 'message'
             if (error instanceof Error) {
                 Alert.alert('Login Error', error.message);
             } else {
                 Alert.alert('Login Error', 'An unknown error occurred');
             }
         } finally {
-            setLoading(false); // Stop loading animation
+            setLoading(false);
         }
     };
 
     return (
-        <View className="flex-1 p-8">
+        <View className="flex-1 p-8 bg-white">
             {/* Back Button */}
             <View className='flex-row justify-start items-center mt-5'>
                 <TouchableOpacity onPress={() => navigation.navigate('Welcome' as never)}>

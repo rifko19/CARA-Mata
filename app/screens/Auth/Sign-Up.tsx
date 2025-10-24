@@ -2,37 +2,32 @@ import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import React from 'react';
-import { auth, firestore } from '../../services/firebaseConfig'; // Pastikan firestore diimpor
+import { auth, firestore } from '../../services/firebaseConfig';
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore"; // Import Firestore functions
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function SignUpScreen() {
     const navigation = useNavigation();
 
-    // State untuk input
     const [fullName, setFullName] = React.useState('');
     const [email, setEmail] = React.useState('');
     const [phone, setPhone] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
-    const [loading, setLoading] = React.useState(false); // State untuk loading
+    const [loading, setLoading] = React.useState(false);
 
-    // Fungsi untuk signup
     const handleSignUp = async () => {
-        // Validasi password
         if (password !== confirmPassword) {
             Alert.alert('Error', 'Passwords do not match');
             return;
         }
 
-        setLoading(true); // Mulai loading saat pendaftaran dimulai
+        setLoading(true);
 
         try {
-            // Mendaftar dengan Firebase Authentication
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Menyimpan data pengguna ke Firestore
             await setDoc(doc(firestore, "users", user.uid), {
                 fullName,
                 email,
@@ -40,10 +35,8 @@ export default function SignUpScreen() {
                 createdAt: serverTimestamp(),
             });
 
-            // Redirect ke halaman login setelah berhasil signup
             navigation.navigate('Login' as never);
         } catch (error) {
-            // Menangani error dari Firebase Authentication
             if (error instanceof Error) {
                 Alert.alert('Sign Up Error', error.message);
             } else {
@@ -55,7 +48,7 @@ export default function SignUpScreen() {
     };
 
     return (
-        <View className="flex-1 p-8">
+        <View className="flex-1 p-8 bg-white">
             {/* Back Button */}
             <View className='flex-row justify-start items-center mt-5'>
                 <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
@@ -146,7 +139,6 @@ export default function SignUpScreen() {
                     disabled={loading}
                 >
                     {loading ? (
-                        // Tampilkan spinner saat loading
                         <ActivityIndicator size="small" color="#ffffff" />
                     ) : (
                         <Text className="text-white text-lg font-bold">Daftar</Text>
