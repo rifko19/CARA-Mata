@@ -66,7 +66,7 @@ export default function ProfileEdit() {
     return (
         <View className="flex-1 p-6 bg-white">
             <View className='flex-row justify-start items-center mt-5'>
-                <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
                     <AntDesign name="left" size={24} color="black" />
                 </TouchableOpacity>
                 <Text className='text-lg'>Kembali</Text>

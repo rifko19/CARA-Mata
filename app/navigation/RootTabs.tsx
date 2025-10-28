@@ -1,7 +1,7 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Alert, View } from 'react-native';
 import { useAuth } from '../services/AuthContext';
 
 import Beranda from "../screens/Beranda";
@@ -15,7 +15,7 @@ export type RootTabParamList = {
     Riwayat: any;
     DeteksiStack: any;
     Klinik: any;
-    Profil: any;
+    Profile: any;
     Wawasan: any;
 };
 
@@ -148,7 +148,7 @@ export default function RootTabs() {
                 }}
             />
             <Tab.Screen
-                name="Profil"
+                name="Profile"
                 component={Profile}
                 options={{
                     title: "Profil",

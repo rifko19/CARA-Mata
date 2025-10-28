@@ -4,8 +4,8 @@ import RootTabs from "./RootTabs";
 import Wawasan from "../screens/Wawasan";
 import Login from "../screens/Auth/Login";
 import Sign from "../screens/Auth/Sign-Up"
-import ProfileEdit from "../screens/ProfileEdit"; // Ganti 'app/screens/ProfileEdit' jika path berbeda
-import { useAuth } from "../services/AuthContext"; // <-- Import useAuth
+import ProfileEdit from "../screens/ProfileEdit";
+import { useAuth } from "../services/AuthContext";
 
 export type RootStackParamList = {
   Welcome: any;

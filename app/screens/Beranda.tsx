@@ -3,8 +3,8 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from '@react-navigation/stack';
 import React from "react";
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, Alert } from "react-native";
-import { useAuth } from "../services/AuthContext"; // Sesuaikan path
+import { Alert, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from "../services/AuthContext";
 
 import ButtonAnimated from "components/ButtonAnimated";
 import type { RootStackParamList } from "../navigation/RootStack";
@@ -16,7 +16,7 @@ type Feature = {
     icon: React.ReactNode;
     bg: string;
     to: keyof RootTabParamList;
-    requiresAuth: boolean; // Added this property
+    requiresAuth: boolean;
 };
 
 const FeatureCard = ({ item, onPress }: { item: Feature; onPress: () => void }) => {
@@ -59,15 +59,15 @@ export default function Beranda() {
             subtitle: "Lihat pemindaian sebelumnya",
             bg: "bg-yellow-100",
             to: "Riwayat",
-            requiresAuth: true, // Requires authentication
+            requiresAuth: true,
             icon: <Ionicons name="refresh-outline" size={23} color="#F59E0B" />,
         },
         {
             title: "Data Pasien",
             subtitle: "Kelola informasi pribadi",
             bg: "bg-green-100",
-            to: "Profil",
-            requiresAuth: true, // Requires authentication
+            to: "Profile",
+            requiresAuth: true,
             icon: <Ionicons name="document-text-outline" size={23} color="#10B981" />,
         },
         {
@@ -75,7 +75,7 @@ export default function Beranda() {
             subtitle: "Temukan dokter mata",
             bg: "bg-purple-100",
             to: "Klinik",
-            requiresAuth: true, // Requires authentication
+            requiresAuth: true,
             icon: <Ionicons name="location-outline" size={23} color="#6B21A8" />,
         },
         {
@@ -83,13 +83,12 @@ export default function Beranda() {
             subtitle: "Pahami kesehatan mata",
             bg: "bg-blue-100",
             to: "Wawasan",
-            requiresAuth: false, // Does not require authentication
+            requiresAuth: false,
             icon: <MaterialCommunityIcons name="book-alert" size={23} color="#2563EB" />,
         },
     ];
 
     const handleFeaturePress = (feature: Feature) => {
-        // If feature requires auth and user is not authenticated
         if (feature.requiresAuth && !isAuthenticated) {
             Alert.alert(
                 'Login Diperlukan',
