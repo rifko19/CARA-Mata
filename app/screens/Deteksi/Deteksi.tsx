@@ -20,7 +20,7 @@ import { loadTensorflowModel } from "react-native-fast-tflite";
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const IMAGE_DISPLAY_HEIGHT = 288; // h-72
+const IMAGE_DISPLAY_HEIGHT = 288;
 
 interface DetectionResult {
     imageUri: string;
@@ -34,8 +34,7 @@ interface DetectionResult {
     timestamp: string;
 }
 
-// Model YOLOv5/v8 float32 umumnya membutuhkan input tensor float 32.
-// Dimensi input tensor: [1, 3, 640, 640] atau [1, 640, 640, 3]
+
 type ModelInputType = Float32Array; 
 const INPUT_SIZE = 640;
 const TENSOR_SIZE = INPUT_SIZE * INPUT_SIZE * 3;
@@ -72,152 +71,375 @@ export default function Deteksi() {
         try {
             console.log('Loading TensorFlow Lite model...');
             
-            // Asumsi path model ini benar
             const modelPath = require('../../../assets/models/best_float32.tflite');
+            console.log('Model path resolved:', modelPath); 
+            
             const loadedModel = await loadTensorflowModel(modelPath);
             
             setModel(loadedModel);
             setIsModelLoaded(true);
-            console.log('TensorFlow Lite model loaded successfully');
+            console.log('✓ Model loaded successfully');
+            
+            if (loadedModel.inputs && loadedModel.outputs) {
+                console.log('Model inputs:', loadedModel.inputs);
+                console.log('Model outputs:', loadedModel.outputs);
+            }
             
         } catch (error) {
             console.error('Failed to load TFLite model:', error);
-            
-            Alert.alert(
-                'Model Loading', 
-                'Model TFLite tidak dapat dimuat.'
-            );
+            Alert.alert('Model Loading Error', 'Model tidak dapat dimuat.');
         }
     };
 
 
-    const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
-        try {
-            console.log('Preprocessing image...');
+    const calculateIoU = (box1: number[], box2: number[]): number => {
+        const [x1, y1, w1, h1] = box1;
+        const [x2, y2, w2, h2] = box2;
 
-            const manipResult = await manipulateAsync(
-                imageUri,
-                [{ resize: { width: INPUT_SIZE, height: INPUT_SIZE } }],
-                { 
-                    compress: 1,
-                    format: SaveFormat.JPEG,
-                    base64: true
-                }
-            );
-
-            setImageSize({ width: INPUT_SIZE, height: INPUT_SIZE });
-            
-            if (!manipResult.base64) {
-                throw new Error("Gagal mendapatkan data Base64 gambar.");
-            }
-
-            console.warn("⚠️ Placeholder Tensor digunakan. Deteksi AI nyata mungkin gagal tanpa implementasi Pixel Decoding & Normalisasi.");
-            
-            return new Float32Array(TENSOR_SIZE); 
-            
-        } catch (error) {
-            console.error('Error preprocessing image:', error);
-            throw error;
-        }
-    };
-
-    const runInference = async (imageBytes: ModelInputType): Promise<DetectionResult> => {
-        if (!model) {
-            throw new Error('Model belum dimuat');
-        }
-
-        try {
-            console.log('Running TFLite inference...');
-            
-            const outputs = model.run([imageBytes]);
-            
-            console.log('Model outputs:', outputs);
-            
-            let outputArray: Float32Array;
-            
-            if (Array.isArray(outputs)) {
-                outputArray = outputs[0];
-            } else if (outputs[0]) {
-                outputArray = outputs[0];
-            } else {
-                throw new Error('Invalid model output format');
-            }
-            
-            const predictions = parseYOLOOutput(outputArray);
-            
-            const hasCataract = predictions.some(pred => 
-                pred.class === 'cataract' && pred.confidence > 0.5
-            );
-            
-            const maxConfidence = predictions.length > 0 
-                ? Math.max(...predictions.map(p => p.confidence))
-                : 0;
-
-            const result: DetectionResult = {
-                imageUri: capturedImage || '',
-                prediction: hasCataract ? 'cataract' : 'normal',
-                confidence: maxConfidence,
-                detections: predictions,
-                timestamp: new Date().toISOString()
-            };
-
-            return result;
-            
-        } catch (error) {
-            console.error('Inference error:', error);
-            throw error;
-        }
-    };
-
-
-    const parseYOLOOutput = (output: any): Array<{class: string; confidence: number; bbox: number[]}> => {
-        const detections: Array<{class: string; confidence: number; bbox: number[]}> = [];
-        const confidenceThreshold = 0.3;
+        const left1 = x1 - w1/2, right1 = x1 + w1/2;
+        const top1 = y1 - h1/2, bottom1 = y1 + h1/2;
         
-        try {
-            if (output && output.length && (Array.isArray(output) || output.buffer instanceof ArrayBuffer)) {
-                const outputArray = Array.from(output) as number[]; 
-                const itemSize = 6; 
-                const numDetections = outputArray.length / itemSize;
-                
-                for (let i = 0; i < numDetections; i++) {
-                    const baseIndex = i * itemSize;
-                    
-                    if (baseIndex + 5 < outputArray.length) {
-                        const x = outputArray[baseIndex] as number;
-                        const y = outputArray[baseIndex + 1] as number;
-                        const w = outputArray[baseIndex + 2] as number;
-                        const h = outputArray[baseIndex + 3] as number;
-                        const confidence = outputArray[baseIndex + 4] as number;
-                        const classId = Math.round(outputArray[baseIndex + 5] as number);
-                        
-                        if (confidence > confidenceThreshold) {
-                            const className = classId === 0 ? 'normal' : 'cataract';
-                            
-                            detections.push({
-                                class: className,
-                                confidence: confidence,
-                                bbox: [x, y, w, h]
-                            });
-                        }
-                    }
-                }
-            } else {
-                console.error("Output tensor tidak valid:", output);
-            }
-            
-            return detections.sort((a, b) => b.confidence - a.confidence);
-            
-        } catch (error) {
-            console.error('Error parsing YOLO output:', error);
+        const left2 = x2 - w2/2, right2 = x2 + w2/2;
+        const top2 = y2 - h2/2, bottom2 = y2 + h2/2;
+        
+        const intersectLeft = Math.max(left1, left2);
+        const intersectTop = Math.max(top1, top2);
+        const intersectRight = Math.min(right1, right2);
+        const intersectBottom = Math.min(bottom1, bottom2);
+        
+        const intersectArea = Math.max(0, intersectRight - intersectLeft) * 
+                            Math.max(0, intersectBottom - intersectTop);
+
+        const area1 = w1 * h1;
+        const area2 = w2 * h2;
+        const unionArea = area1 + area2 - intersectArea;
+        
+        return intersectArea / (unionArea + 1e-6);
+    };
+
+const parseYOLOOutput = (output: any): Array<{class: string; confidence: number; bbox: number[]}> => {
+    const detections: Array<{class: string; confidence: number; bbox: number[]}> = [];
+    const confThreshold = 0.25;
+    
+    try {
+        let outputArray: number[];
+        
+        if (output instanceof Float32Array || output instanceof Float64Array) {
+            outputArray = Array.from(output);
+        } else if (Array.isArray(output)) {
+            outputArray = output;
+        } else {
+            console.error('❌ Invalid output type:', typeof output);
             return [];
         }
-    }; 
+        
+        console.log('Raw output length:', outputArray.length);
+        console.log('First 20 values:', outputArray.slice(0, 20).map(v => v.toFixed(3)).join(', '));
+        
+
+        let numDetections = 0;
+        let featuresPerBox = 6;
+        
+        if (outputArray.length === 1800) {
+            numDetections = 300;
+            console.log('✅ Format: (1, 300, 6) - NMS output');
+        } else if (outputArray.length === 600) {
+            numDetections = 100;
+            console.log('✅ Format: (1, 100, 6) - NMS output');
+        } else if (outputArray.length === 50400) {
+            console.warn('⚠️ Format: (1, 6, 8400) - RAW output, using fallback');
+            return parseYOLOOutputRaw(outputArray);
+        } else {
+            numDetections = Math.floor(outputArray.length / 6);
+            console.log(`Auto-detected ${numDetections} predictions`);
+        }
+        
+        console.log(`Processing ${numDetections} post-NMS detections...`);
+        
+        for (let i = 0; i < numDetections; i++) {
+            const baseIdx = i * featuresPerBox;
+            
+            if (baseIdx + featuresPerBox > outputArray.length) {
+                console.warn(`Index out of bounds at ${i}`);
+                break;
+            }
+            
+            const x1 = outputArray[baseIdx + 0] ?? 0;
+            const y1 = outputArray[baseIdx + 1] ?? 0;
+            const x2 = outputArray[baseIdx + 2] ?? 0;
+            const y2 = outputArray[baseIdx + 3] ?? 0;
+            const confidence = outputArray[baseIdx + 4] ?? 0;
+            const classId = Math.round(outputArray[baseIdx + 5] ?? 0);
+            
+            if (confidence < confThreshold) continue;
+            if (x1 === 0 && y1 === 0 && x2 === 0 && y2 === 0) continue;
+            
+            let norm_x1 = x1, norm_y1 = y1, norm_x2 = x2, norm_y2 = y2;
+            
+            if (x1 > 2 || x2 > 2 || y1 > 2 || y2 > 2) {
+                norm_x1 = x1 / INPUT_SIZE;
+                norm_y1 = y1 / INPUT_SIZE;
+                norm_x2 = x2 / INPUT_SIZE;
+                norm_y2 = y2 / INPUT_SIZE;
+            }
+            
+            norm_x1 = Math.max(0, Math.min(1, norm_x1));
+            norm_y1 = Math.max(0, Math.min(1, norm_y1));
+            norm_x2 = Math.max(0, Math.min(1, norm_x2));
+            norm_y2 = Math.max(0, Math.min(1, norm_y2));
+            
+            if (norm_x2 <= norm_x1 || norm_y2 <= norm_y1) continue;
+            
+            const cx = (norm_x1 + norm_x2) / 2;
+            const cy = (norm_y1 + norm_y2) / 2;
+            const w = norm_x2 - norm_x1;
+            const h = norm_y2 - norm_y1;
+            
+            if (w < 0.01 || h < 0.01) continue;
+            
+            const className = classId === 0 ? 'cataract' : 'normal';
+            
+            detections.push({
+                class: className,
+                confidence: confidence,
+                bbox: [cx, cy, w, h]
+            });
+        }
+        
+        console.log(`✅ Found ${detections.length} valid detections`);
+        
+        const sorted = detections.sort((a, b) => b.confidence - a.confidence);
+        
+        sorted.slice(0, 5).forEach((det, idx) => {
+            console.log(`  ${idx + 1}. ${det.class} ${(det.confidence * 100).toFixed(1)}% at [${det.bbox.map(v => v.toFixed(2)).join(', ')}]`);
+        });
+        
+        return sorted.slice(0, 20);
+        
+    } catch (error) {
+        console.error('❌ Error parsing YOLO output:', error);
+        return [];
+    }
+};
+
+const parseYOLOOutputRaw = (outputArray: number[]): Array<{class: string; confidence: number; bbox: number[]}> => {
+    console.log('⚠️ Using RAW parsing (backup mode)');
+    
+    const detections: Array<{class: string; confidence: number; bbox: number[]}> = [];
+    const confThreshold = 0.25;
+    const numPredictions = 8400;
+    const featuresPerBox = 6;
+    
+    for (let i = 0; i < numPredictions; i++) {
+        const baseIdx = i * featuresPerBox;
+        
+        if (baseIdx + featuresPerBox > outputArray.length) break;
+        
+        let cx = outputArray[baseIdx + 0];
+        let cy = outputArray[baseIdx + 1];
+        let w = outputArray[baseIdx + 2];
+        let h = outputArray[baseIdx + 3];
+        const objectness = outputArray[baseIdx + 4];
+        const classScore = outputArray[baseIdx + 5];
+        
+        if (objectness < confThreshold) continue;
+        
+        if (cx > 2) {
+            cx = cx / INPUT_SIZE;
+            cy = cy / INPUT_SIZE;
+            w = w / INPUT_SIZE;
+            h = h / INPUT_SIZE;
+        }
+        
+        if (cx < 0 || cx > 1 || cy < 0 || cy > 1) continue;
+        if (w <= 0 || w > 1 || h <= 0 || h > 1) continue;
+        if (w < 0.02 || h < 0.02) continue;
+        
+        const isCataract = classScore > 0.5;
+        const className = isCataract ? 'cataract' : 'normal';
+        const classConfidence = isCataract ? classScore : (1 - classScore);
+        const finalConfidence = objectness * classConfidence;
+        
+        if (finalConfidence >= confThreshold) {
+            detections.push({
+                class: className,
+                confidence: finalConfidence,
+                bbox: [cx, cy, w, h]
+            });
+        }
+    }
+    
+    return detections.sort((a, b) => b.confidence - a.confidence).slice(0, 100);
+};
+
+
+const jpeg = require('jpeg-js');
+const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
+    try {
+        console.log('Preprocessing image...');
+
+        const manipResult = await manipulateAsync(
+            imageUri,
+            [{ resize: { width: INPUT_SIZE, height: INPUT_SIZE } }],
+            { 
+                compress: 1,
+                format: SaveFormat.JPEG,
+                base64: true
+            }
+        );
+
+        setImageSize({ width: INPUT_SIZE, height: INPUT_SIZE });
+        
+        if (!manipResult.base64) {
+            throw new Error("Failed to get base64 data");
+        }
+
+        const binaryString = atob(manipResult.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const jpegData = jpeg.decode(bytes, { useTArray: true });
+        console.log(`Decoded JPEG: ${jpegData.width}x${jpegData.height}`);
+
+        const rgbData = new Float32Array(INPUT_SIZE * INPUT_SIZE * 3);
+
+        let idx = 0;
+        for (let h = 0; h < INPUT_SIZE; h++) {
+            for (let w = 0; w < INPUT_SIZE; w++) {
+                const pixelIdx = (h * INPUT_SIZE + w) * 4; 
+
+                rgbData[idx++] = jpegData.data[pixelIdx] / 255.0;     // R
+                rgbData[idx++] = jpegData.data[pixelIdx + 1] / 255.0; // G
+                rgbData[idx++] = jpegData.data[pixelIdx + 2] / 255.0; // B
+            }
+        }
+
+        console.log('Image preprocessed (HWC format)');
+        console.log('Tensor size:', rgbData.length);
+        console.log('First 10 values:', Array.from(rgbData.slice(0, 10)));
+        
+        return rgbData;
+        
+    } catch (error) {
+        console.error('Error preprocessing image:', error);
+        throw error;
+    }
+};
+
+
+const runInference = async (imageBytes: ModelInputType): Promise<DetectionResult> => {
+    if (!model) {
+        throw new Error('Model belum dimuat');
+    }
+
+    try {
+        console.log('=== INFERENCE START ===');
+        console.log('Input tensor size:', imageBytes.length);
+        
+        const outputs = await model.run([imageBytes]);
+        
+        if (!outputs || !Array.isArray(outputs) || outputs.length === 0) {
+            throw new Error('Invalid model output: outputs is empty or not an array');
+        }
+        
+        const outputArray = outputs[0];
+        
+        if (!outputArray) {
+            throw new Error('Invalid model output: first output is null/undefined');
+        }
+        
+        console.log('Output type:', outputArray.constructor.name);
+        console.log('Output length:', outputArray.length);
+        console.log('Expected: 1800 (300×6) or 600 (100×6) for NMS=true');
+        
+        const predictions = parseYOLOOutput(outputArray);
+        
+        if (predictions.length === 0) {
+            console.warn('⚠️ No detections found!');
+        } else {
+            console.log(`✅ Final: ${predictions.length} detections`);
+        }
+        
+        const cataractDets = predictions.filter(p => 
+            p.class === 'cataract' && p.confidence > 0.25
+        );
+        
+        const hasCataract = cataractDets.length > 0;
+        const maxConfidence = predictions.length > 0 
+            ? Math.max(...predictions.map(p => p.confidence))
+            : 0;
+
+        console.log(`✅ Result: ${hasCataract ? 'CATARACT' : 'NORMAL'} (${(maxConfidence * 100).toFixed(1)}%)`);
+        console.log('=== INFERENCE END ===');
+
+        return {
+            imageUri: capturedImage || '',
+            prediction: hasCataract ? 'cataract' : 'normal',
+            confidence: maxConfidence,
+            detections: predictions.slice(0, 10),
+            timestamp: new Date().toISOString()
+        };
+        
+    } catch (error) {
+        console.error('❌ Inference error:', error);
+        throw error;
+    }
+};
+
+const applyNMS = (
+    detections: Array<{class: string; confidence: number; bbox: number[]}>,
+    iouThreshold: number = 0.4
+): Array<{class: string; confidence: number; bbox: number[]}> => {
+    
+    if (detections.length === 0) return [];
+    
+    const byClass: {[key: string]: typeof detections} = {};
+    detections.forEach(det => {
+        if (!byClass[det.class]) byClass[det.class] = [];
+        byClass[det.class].push(det);
+    });
+    
+    const kept: typeof detections = [];
+    
+    Object.keys(byClass).forEach(className => {
+        const classDetections = byClass[className];
+        classDetections.sort((a, b) => b.confidence - a.confidence);
+        
+        const classKept: typeof detections = [];
+        
+        for (let i = 0; i < classDetections.length; i++) {
+            let shouldKeep = true;
+            
+            for (const keptBox of classKept) {
+                const iou = calculateIoU(classDetections[i].bbox, keptBox.bbox);
+                if (iou > iouThreshold) {
+                    shouldKeep = false;
+                    break;
+                }
+            }
+            
+            if (shouldKeep) {
+                classKept.push(classDetections[i]);
+                if (classKept.length >= 3) break;
+            }
+        }
+        
+        kept.push(...classKept);
+    });
+    
+    console.log(`NMS: ${detections.length} → ${kept.length} detections`);
+    
+    return kept.sort((a, b) => b.confidence - a.confidence);
+};
+
+
 
     const renderBoundingBoxes = () => {
         if (!detectionResult || detectionResult.detections.length === 0) return null;
 
-        const displayWidth = SCREEN_WIDTH - 40; // padding 20px each side
+        const displayWidth = SCREEN_WIDTH - 40;
         const displayHeight = IMAGE_DISPLAY_HEIGHT;
         
         return (
@@ -227,7 +449,6 @@ export default function Deteksi() {
                 height={displayHeight}
             >
                 {detectionResult.detections.map((detection, index) => {
-                    // Konversi koordinat normalisasi YOLO (x_center, y_center, width, height) ke koordinat piksel
                     const [xCenter, yCenter, boxWidth, boxHeight] = detection.bbox;
                     
                     const x = (xCenter - boxWidth / 2) * displayWidth;
@@ -299,7 +520,6 @@ export default function Deteksi() {
 
             setCapturedImage(photo.uri);
 
-            // Tipe data sekarang adalah ModelInputType (Float32Array)
             const imageTensor = await preprocessImage(photo.uri);
             const result = await runInference(imageTensor);
             
@@ -384,7 +604,7 @@ export default function Deteksi() {
                                 source={{ uri: capturedImage }} 
                                 className="flex-1 w-full h-full"
                                 resizeMode="contain"
-                                style={{height: IMAGE_DISPLAY_HEIGHT, width: '100%'}} // Set explicit height for image
+                                style={{height: IMAGE_DISPLAY_HEIGHT, width: '100%'}}
                             />
                             
                             {/* Render bounding boxes */}
