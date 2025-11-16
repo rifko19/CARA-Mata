@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import Slider from '@react-native-community/slider';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import React, { useEffect, useRef, useState } from "react";
@@ -32,6 +33,7 @@ interface DetectionResult {
         bbox: number[];
     }>;
     timestamp: string;
+    eyeSide: 'left' | 'right';
 }
 
 
@@ -48,6 +50,7 @@ export default function Deteksi() {
     const [imageSize, setImageSize] = useState({ width: INPUT_SIZE, height: INPUT_SIZE });
     const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null);
     const [model, setModel] = useState<any | null>(null);
+    const [selectedEye, setSelectedEye] = useState('left');
     const [zoom, setZoom] = useState(0);
     const cameraRef = useRef<CameraView>(null);
 
@@ -328,7 +331,7 @@ const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
 };
 
 
-const runInference = async (imageBytes: ModelInputType): Promise<DetectionResult> => {
+const runInference = async (imageBytes: ModelInputType, currentEye: 'left' | 'right'): Promise<DetectionResult> => {
     if (!model) {
         throw new Error('Model belum dimuat');
     }
@@ -378,7 +381,8 @@ const runInference = async (imageBytes: ModelInputType): Promise<DetectionResult
             prediction: hasCataract ? 'cataract' : 'normal',
             confidence: maxConfidence,
             detections: predictions.slice(0, 10),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            eyeSide: currentEye
         };
         
     } catch (error) {
@@ -520,7 +524,7 @@ const applyNMS = (
             setCapturedImage(photo.uri);
 
             const imageTensor = await preprocessImage(photo.uri);
-            const result = await runInference(imageTensor);
+            const result = await runInference(imageTensor, selectedEye as 'left' | 'right');
             
             setDetectionResult(result);
             showDetectionResult(result);
@@ -596,13 +600,34 @@ const applyNMS = (
     return (
         <SafeAreaView className="flex-1 bg-sky-50">
             <ScrollView className="px-5">
+                
+                {!capturedImage && (
+                    <View className="mx-5 mt-6 mb-2">
+                        <Text className="text-slate-500 text-base font-semibold text-center mb-2 ml-1 uppercase tracking-wider">
+                            Pilih Mata yang Diperiksa
+                        </Text>
+                        <SegmentedControl
+                            values={['Mata Kiri', 'Mata Kanan']}
+                            selectedIndex={selectedEye === 'left' ? 0 : 1}
+                            onChange={(event) => {
+                                setSelectedEye(event.nativeEvent.selectedSegmentIndex === 0 ? 'left' : 'right');
+                            }}
+                            fontStyle={{fontWeight: '600', fontSize: 14}}
+                            activeFontStyle={{color: 'white', fontWeight: 'bold'}}
+                            tintColor="#2563EB"
+                            backgroundColor="#E2E8F0"
+                            style={{ height: 40 }}
+                        />
+                    </View>
+                )}
+
                 <View className="relative mt-4 bg-gray-200 h-72 rounded-xl overflow-hidden">
                     {capturedImage ? (
                         <View className="flex-1">
                             <Image 
                                 source={{ uri: capturedImage }} 
                                 className="flex-1 w-full h-full"
-                                resizeMode="contain"
+                                resizeMode="cover"
                                 style={{height: IMAGE_DISPLAY_HEIGHT, width: '100%'}}
                             />
                             
@@ -616,27 +641,6 @@ const applyNMS = (
                             >
                                 <Ionicons name="arrow-back" size={24} color="#fff" />
                             </TouchableOpacity>
-                            
-                            {detectionResult && !isProcessing && (
-                                <View className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-90 rounded-lg p-3">
-                                    <View className="flex-row items-center">
-                                        <View className={`w-3 h-3 rounded-full mr-2 ${
-                                            detectionResult.prediction === 'cataract' ? 'bg-red-500' : 'bg-green-500'
-                                        }`} />
-                                        <Text className="text-white font-semibold flex-1">
-                                            {detectionResult.prediction === 'cataract' ? 'Katarak Terdeteksi' : 'Normal'}
-                                        </Text>
-                                        <Text className="text-white text-sm">
-                                            {(detectionResult.confidence * 100).toFixed(1)}%
-                                        </Text>
-                                    </View>
-                                    {detectionResult.detections.length > 0 && (
-                                        <Text className="text-gray-300 text-xs mt-1">
-                                            {detectionResult.detections.length} objek terdeteksi
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
                         </View>
                     ) : (
                         <View style={styles.cameraContainer}>
@@ -648,7 +652,6 @@ const applyNMS = (
                             >
                             </CameraView>
                             
-                            {/* Camera Overlay */}
                             <View style={styles.overlayContainer} pointerEvents="none">
                                 <View style={styles.circleGuide} />
                                 <Text style={styles.guideText}>
@@ -656,14 +659,7 @@ const applyNMS = (
                                 </Text>
                             </View>
 
-                            {/* ============================================
-                            == KODE YANG DIPERBARUI DIMULAI DARI SINI ==
-                            ============================================
-                            */}
-
-                            {/* Camera Controls */}
                             <View style={styles.controlsContainer}>
-                                {/* Flip Camera Button */}
                                 <TouchableOpacity
                                     onPress={toggleCameraFacing}
                                     style={styles.flipButton}
@@ -777,33 +773,20 @@ const applyNMS = (
                 {/* Hasil Deteksi Detail */}
                 {detectionResult && (
                     <View className="mt-4 bg-white rounded-xl p-4 shadow-md">
-                        <Text className="text-lg font-semibold text-gray-800">Detail Analisis</Text>
-                        
-                        <View className={`mt-3 p-3 rounded-lg ${
-                            detectionResult.prediction === 'cataract' ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
-                        }`}>
-                            <View className="flex-row justify-between items-center">
-                                <Text className={`font-bold ${
-                                    detectionResult.prediction === 'cataract' ? 'text-red-800' : 'text-green-800'
-                                }`}>
-                                    {detectionResult.prediction === 'cataract' ? 'KATARAK TERDETEKSI' : 'KONDISI NORMAL'}
+                        <View className="flex-row justify-between items-center mb-3">
+                            <Text className="text-lg font-semibold text-gray-800">Detail Analisis</Text>
+                            <View className="bg-blue-100 px-3 py-1 rounded-full">
+                                <Text className="text-blue-700 text-xs font-bold">
+                                    {detectionResult.eyeSide === 'left' ? 'Mata Kiri' : 'Mata Kanan'}
                                 </Text>
-                                <View className={`px-2 py-1 rounded-full ${
-                                    detectionResult.prediction === 'cataract' ? 'bg-red-200' : 'bg-green-200'
-                                }`}>
-                                    <Text className={`text-xs font-bold ${
-                                        detectionResult.prediction === 'cataract' ? 'text-red-800' : 'text-green-800'
-                                    }`}>
-                                        {(detectionResult.confidence * 100).toFixed(1)}%
-                                    </Text>
-                                </View>
                             </View>
                         </View>
+                        
 
                         {detectionResult.detections.length > 0 && (
                             <View className="mt-3">
                                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                                    Deteksi ({detectionResult.detections.length}):
+                                    Deteksi :
                                 </Text>
                                 {detectionResult.detections.map((detection, index) => (
                                     <View key={index} className="flex-row justify-between items-center py-2 border-b border-gray-100">

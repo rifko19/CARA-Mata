@@ -35,7 +35,8 @@
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.15.2",
-    "react-native-svg": "^15.13.0"
+    "react-native-svg": "^15.13.0",
+    "@react-native-segmented-control/segmented-control": "2.5.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
