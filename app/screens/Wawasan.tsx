@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; // Menggunakan hook navigasi
+import { useEffect } from 'react';
+import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../services/AuthContext'; // Mengimpor AuthContext
 
 const Wawasan = () => {
@@ -48,10 +48,10 @@ const Wawasan = () => {
             </View>
 
             {/* Search bar */}
-            <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-2 mb-6">
+            <View className="flex-row items-center rounded-xl  bg-gray-200 px-4 py-2 mb-6">
                 <TextInput
                     placeholder="Cari artikel, tips, atau FAQ..."
-                    className="flex-1 text-sm text-gray-600"
+                    className="flex-1 text-sm placeholder:text-gray-600"
                 />
             </View>
 

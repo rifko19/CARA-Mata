@@ -123,7 +123,7 @@ type KlinikItem = {
         {/* Kolom Pencarian */}
         <TextInput
             placeholder="Cari klinik..."
-            className="bg-white p-3 rounded-lg mb-6 border border-gray-300"
+            className="bg-white p-3 placeholder:text-gray-400 rounded-lg mb-6 border border-gray-300"
             value={searchQuery}
             onChangeText={setSearchQuery}
         />

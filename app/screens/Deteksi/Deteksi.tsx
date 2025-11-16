@@ -107,8 +107,7 @@ export default function Deteksi() {
         const intersectRight = Math.min(right1, right2);
         const intersectBottom = Math.min(bottom1, bottom2);
         
-        const intersectArea = Math.max(0, intersectRight - intersectLeft) * 
-                            Math.max(0, intersectBottom - intersectTop);
+        const intersectArea = Math.max(0, intersectRight - intersectLeft) * Math.max(0, intersectBottom - intersectTop);
 
         const area1 = w1 * h1;
         const area2 = w2 * h2;
@@ -618,15 +617,6 @@ const applyNMS = (
                                 <Ionicons name="arrow-back" size={24} color="#fff" />
                             </TouchableOpacity>
                             
-                            {isProcessing && (
-                                <View className="absolute inset-0 bg-black bg-opacity-50 items-center justify-center">
-                                    <ActivityIndicator size="large" color="#fff" />
-                                    <Text className="text-white mt-2 font-medium">
-                                        Menganalisis dengan AI...
-                                    </Text>
-                                </View>
-                            )}
-                            
                             {detectionResult && !isProcessing && (
                                 <View className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-90 rounded-lg p-3">
                                     <View className="flex-row items-center">
@@ -666,6 +656,11 @@ const applyNMS = (
                                 </Text>
                             </View>
 
+                            {/* ============================================
+                            == KODE YANG DIPERBARUI DIMULAI DARI SINI ==
+                            ============================================
+                            */}
+
                             {/* Camera Controls */}
                             <View style={styles.controlsContainer}>
                                 {/* Flip Camera Button */}
@@ -676,71 +671,107 @@ const applyNMS = (
                                 >
                                     <Ionicons name="camera-reverse-outline" size={30} color="#fff" />
                                 </TouchableOpacity>
-
-                                {/* Zoom Controls */}
-                                <View style={styles.zoomContainer}>
-                                    <View style={styles.zoomSliderWrapper}>
-                                        <Ionicons name="remove" size={20} color="#fff" />
-                                        <Slider
-                                            style={styles.zoomSlider}
-                                            minimumValue={0}
-                                            maximumValue={1}
-                                            value={zoom}
-                                            onValueChange={setZoom}
-                                            minimumTrackTintColor="#10b981"
-                                            maximumTrackTintColor="rgba(255,255,255,0.3)"
-                                            thumbTintColor="#10b981"
-                                        />
-                                        <Ionicons name="add" size={20} color="#fff" />
-                                    </View>
-                                    <Text style={styles.zoomText}>
-                                        {(zoom * 100).toFixed(0)}% Zoom
-                                    </Text>
-                                </View>
-
-                                {/* Zoom Preset Buttons */}
-                                <View style={styles.zoomPresetContainer}>
-                                    <TouchableOpacity
-                                        onPress={() => setZoom(0)}
-                                        style={[styles.zoomPresetButton, zoom === 0 && styles.zoomPresetButtonActive]}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.zoomPresetText, zoom === 0 && styles.zoomPresetTextActive]}>
-                                            1x
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => setZoom(0.25)}
-                                        style={[styles.zoomPresetButton, Math.abs(zoom - 0.25) < 0.05 && styles.zoomPresetButtonActive]}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.zoomPresetText, Math.abs(zoom - 0.25) < 0.05 && styles.zoomPresetTextActive]}>
-                                            1.5x
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => setZoom(0.5)}
-                                        style={[styles.zoomPresetButton, Math.abs(zoom - 0.5) < 0.05 && styles.zoomPresetButtonActive]}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.zoomPresetText, Math.abs(zoom - 0.5) < 0.05 && styles.zoomPresetTextActive]}>
-                                            2x
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => setZoom(1)}
-                                        style={[styles.zoomPresetButton, zoom === 1 && styles.zoomPresetButtonActive]}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.zoomPresetText, zoom === 1 && styles.zoomPresetTextActive]}>
-                                            Max
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
                             </View>
                         </View>
                     )}
                 </View>
+
+                {!capturedImage && (
+                    <View className="mt-4">
+                        {/* Zoom Slider */}
+                        <View className="bg-white rounded-xl p-2 ">
+                            <Text className="text-xs font-semibold text-gray-600 text-center">
+                                {(zoom * 100).toFixed(0)}% Zoom
+                            </Text>
+                            <View className="flex-row items-center gap-2">
+                                <Ionicons name="remove" size={20} color="#6b7280" />
+                                <Slider
+                                    style={{ flex: 1, height: 40 }}
+                                    minimumValue={0}
+                                    maximumValue={1}
+                                    value={zoom}
+                                    onValueChange={setZoom}
+                                    minimumTrackTintColor="#0ea5e9"
+                                    maximumTrackTintColor="#d1d5db"
+                                    thumbTintColor="#0284c7"
+                                />
+                                <Ionicons name="add" size={20} color="#6b7280" />
+                            </View>
+                        </View>
+
+                        {/* Tombol Preset Zoom */}
+                        <View className="flex-row justify-center gap-4 mt-3 mx-4">
+                            <TouchableOpacity
+                                onPress={() => setZoom(0)}
+                                className={`flex-1 h-12 rounded-full p-2 justify-center items-center shadow-sm ${
+                                    zoom === 0 
+                                    ? 'bg-blue-600' 
+                                    : 'bg-white border border-gray-200'
+                                }`}
+                                activeOpacity={0.7}
+                            >
+                                <Text className={`font-bold ${
+                                    zoom === 0 
+                                    ? 'text-white' 
+                                    : 'text-gray-700'
+                                }`}>
+                                    1x
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setZoom(0.25)}
+                                className={`flex-1 h-12 rounded-full justify-center items-center shadow-sm ${
+                                    Math.abs(zoom - 0.25) < 0.05 
+                                    ? 'bg-blue-600' 
+                                    : 'bg-white border border-gray-200'
+                                }`}
+                                activeOpacity={0.7}
+                            >
+                                <Text className={`font-bold ${
+                                    Math.abs(zoom - 0.25) < 0.05 
+                                    ? 'text-white' 
+                                    : 'text-gray-700'
+                                }`}>
+                                    1.5x
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setZoom(0.5)}
+                                className={`flex-1 h-12 rounded-full justify-center items-center shadow-sm ${
+                                    Math.abs(zoom - 0.5) < 0.05 
+                                    ? 'bg-blue-600' 
+                                    : 'bg-white border border-gray-200'
+                                }`}
+                                activeOpacity={0.7}
+                            >
+                                <Text className={`font-bold ${
+                                    Math.abs(zoom - 0.5) < 0.05 
+                                    ? 'text-white' 
+                                    : 'text-gray-700'
+                                }`}>
+                                    2x
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setZoom(1)}
+                                className={`flex-1 h-12 rounded-full justify-center items-center shadow-sm ${
+                                    zoom === 1 
+                                    ? 'bg-blue-600' 
+                                    : 'bg-white border border-gray-200'
+                                }`}
+                                activeOpacity={0.7}
+                            >
+                                <Text className={`font-bold ${
+                                    zoom === 1 
+                                    ? 'text-white' 
+                                    : 'text-gray-700'
+                                }`}>
+                                    Max
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
 
 
                 {/* Hasil Deteksi Detail */}
@@ -800,12 +831,12 @@ const applyNMS = (
                         <View className="mt-3 pt-3 border-t border-gray-200">
                             <Text className="text-xs text-gray-500">
                                 📅 Waktu analisis: {new Date(detectionResult.timestamp).toLocaleString('id-ID', {
-                                        day: '2-digit',
-                                        month: 'short',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
                             </Text>
                         </View>
                     </View>
@@ -905,11 +936,16 @@ const styles = StyleSheet.create({
         borderRadius: 999,
         zIndex: 10,
     },
+    /* ============================================
+    == STYLE YANG DIPERBARUI DIMULAI DARI SINI ==
+    ============================================
+    */
     zoomContainer: {
         marginTop: 60,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         borderRadius: 12,
-        padding: 12,
+        paddingVertical: 4, 
+        paddingHorizontal: 12,
         alignItems: 'center',
     },
     zoomSliderWrapper: {
@@ -924,23 +960,37 @@ const styles = StyleSheet.create({
     },
     zoomText: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
-        marginTop: 4,
+        textAlign: 'center',
+        marginBottom: 12, 
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     zoomPresetContainer: {
+        flexDirection: 'column',
+        alignItems: 'center', 
+        marginTop: 16,
+    },
+    zoomPresetButtonsWrapper: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: 8,
-        marginTop: 8,
+        gap: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 25,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
     },
     zoomPresetButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 40,
+        height: 40,
         borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     zoomPresetButtonActive: {
         backgroundColor: '#10b981',
@@ -953,5 +1003,6 @@ const styles = StyleSheet.create({
     },
     zoomPresetTextActive: {
         color: '#fff',
+        fontWeight: 'bold',
     },
 });
