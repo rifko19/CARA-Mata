@@ -7,12 +7,13 @@ import { useAuth } from '../services/AuthContext';
 import Beranda from "../screens/Beranda";
 import Klinik from "../screens/Klinik";
 import Profile from "../screens/Profile";
-import Riwayat from "../screens/Riwayat";
+import Riwayat from "../screens/Riwayat/Riwayat";
 import DeteksiStack from "./DeteksiStack";
+import RiwayatStack from "./RiwayatStack";
 
 export type RootTabParamList = {
+    RiwayatStack: any;
     Beranda: any;
-    Riwayat: any;
     DeteksiStack: any;
     Klinik: any;
     Profile: any;
@@ -25,19 +26,15 @@ export default function RootTabs() {
     const navigation = useNavigation();
     const { isAuthenticated, isGuest } = useAuth();
 
-    // Function to check if user can access a feature
     const checkAccess = (screenName: string): boolean => {
-        // If user is authenticated, allow access to everything
         if (isAuthenticated) {
             return true;
         }
 
-        // If user is guest, only allow Beranda and DeteksiStack
         if (isGuest && (screenName === 'Beranda' || screenName === 'DeteksiStack')) {
             return true;
         }
 
-        // If user is guest trying to access restricted features
         if (isGuest) {
             Alert.alert(
                 'Login Diperlukan',
@@ -56,7 +53,6 @@ export default function RootTabs() {
             return false;
         }
 
-        // If not authenticated and not guest, redirect to welcome
         navigation.navigate('Welcome' as never);
         return false;
     };
@@ -81,12 +77,12 @@ export default function RootTabs() {
                 }}
             />
             <Tab.Screen
-                name="Riwayat"
-                component={Riwayat}
+                name="RiwayatStack"
+                component={RiwayatStack}
                 options={{
                     headerTitleAlign: "center",
                     headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-                    headerShown: true,
+                    headerShown: false,
                     title: "Riwayat",
                     tabBarActiveTintColor: "#F59E0B",
                     tabBarIcon: ({ color, size }) => (
@@ -95,7 +91,7 @@ export default function RootTabs() {
                 }}
                 listeners={{
                     tabPress: (e) => {
-                        if (!checkAccess('Riwayat')) {
+                        if (!checkAccess('RiwayatStack')) {
                             e.preventDefault();
                         }
                     },

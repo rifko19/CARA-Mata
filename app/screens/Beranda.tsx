@@ -58,7 +58,7 @@ export default function Beranda() {
             title: "Riwayat",
             subtitle: "Lihat pemindaian sebelumnya",
             bg: "bg-yellow-100",
-            to: "Riwayat",
+            to: "RiwayatStack",
             requiresAuth: true,
             icon: <Ionicons name="refresh-outline" size={23} color="#F59E0B" />,
         },

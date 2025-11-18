@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import Slider from '@react-native-community/slider';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -19,6 +21,9 @@ import {
 } from "react-native";
 import { loadTensorflowModel } from "react-native-fast-tflite";
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
+import { useAuth } from '../../services/AuthContext';
+import { db } from '../../services/firebaseConfig';
+
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const IMAGE_DISPLAY_HEIGHT = 288;
@@ -42,6 +47,8 @@ const INPUT_SIZE = 640;
 const TENSOR_SIZE = INPUT_SIZE * INPUT_SIZE * 3;
 
 export default function Deteksi() {
+    const { user } = useAuth();
+    const [isSaving, setIsSaving] = useState(false);
     const [facing, setFacing] = useState<CameraType>('back');
     const [permission, requestPermission] = useCameraPermissions();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -331,38 +338,28 @@ const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
 };
 
 
-const runInference = async (imageBytes: ModelInputType, currentEye: 'left' | 'right'): Promise<DetectionResult> => {
-    if (!model) {
-        throw new Error('Model belum dimuat');
-    }
+const runInference = async (
+    imageBytes: ModelInputType, 
+    currentEye: 'left' | 'right',
+    photoUri: string
+): Promise<DetectionResult> => {
+    
+    if (!model) throw new Error('Model belum dimuat');
 
     try {
         console.log('=== INFERENCE START ===');
-        console.log('Input tensor size:', imageBytes.length);
-        
         const outputs = await model.run([imageBytes]);
         
         if (!outputs || !Array.isArray(outputs) || outputs.length === 0) {
             throw new Error('Invalid model output: outputs is empty or not an array');
         }
-        
         const outputArray = outputs[0];
-        
         if (!outputArray) {
             throw new Error('Invalid model output: first output is null/undefined');
         }
         
-        console.log('Output type:', outputArray.constructor.name);
-        console.log('Output length:', outputArray.length);
-        console.log('Expected: 1800 (300×6) or 600 (100×6) for NMS=true');
-        
-        const predictions = parseYOLOOutput(outputArray);
-        
-        if (predictions.length === 0) {
-            console.warn('⚠️ No detections found!');
-        } else {
-            console.log(`✅ Final: ${predictions.length} detections`);
-        }
+        // Pastikan fungsi 'parseYOLOOutput' ada di file Anda
+        const predictions = parseYOLOOutput(outputArray); 
         
         const cataractDets = predictions.filter(p => 
             p.class === 'cataract' && p.confidence > 0.25
@@ -377,7 +374,8 @@ const runInference = async (imageBytes: ModelInputType, currentEye: 'left' | 'ri
         console.log('=== INFERENCE END ===');
 
         return {
-            imageUri: capturedImage || '',
+
+            imageUri: photoUri, 
             prediction: hasCataract ? 'cataract' : 'normal',
             confidence: maxConfidence,
             detections: predictions.slice(0, 10),
@@ -387,7 +385,7 @@ const runInference = async (imageBytes: ModelInputType, currentEye: 'left' | 'ri
         
     } catch (error) {
         console.error('❌ Inference error:', error);
-        throw error;
+        throw error; // Biarkan 'takePicture' yang menangani Alert
     }
 };
 
@@ -504,9 +502,7 @@ const applyNMS = (
             Alert.alert('Error', 'Kamera belum siap');
             return;
         }
-
         if (isProcessing) return;
-
         setIsProcessing(true);
         
         try {
@@ -514,33 +510,39 @@ const applyNMS = (
             const photo = await cameraRef.current.takePictureAsync({
                 quality: 0.9,
                 base64: false,
-                skipProcessing: false,
+                skipProcessing: false, // false agar sesuai setelan kamera
             });
 
             if (!photo?.uri) {
                 throw new Error('Gagal mengambil foto');
             }
 
-            setCapturedImage(photo.uri);
+            setCapturedImage(photo.uri); 
 
             const imageTensor = await preprocessImage(photo.uri);
-            const result = await runInference(imageTensor, selectedEye as 'left' | 'right');
+            
+            const result = await runInference(
+                imageTensor, 
+                selectedEye as 'left' | 'right', 
+                photo.uri
+            );
             
             setDetectionResult(result);
-            showDetectionResult(result);
 
         } catch (error) {
             console.error('Detection error:', error);
-            Alert.alert(
-                'Error Deteksi', 
-                `Terjadi kesalahan: ${(error as Error).message}\nSilakan coba lagi.`,
-                [{ text: 'OK' }]
-            );
+            let errorMessage = "Terjadi kesalahan.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            Alert.alert('Error Deteksi', `${errorMessage}\nSilakan coba lagi.`);
         } finally {
             setIsProcessing(false);
         }
     };
-
+    
     const showDetectionResult = (result: DetectionResult) => {
         const hasCataract = result.prediction === 'cataract';
         const confidencePercent = (result.confidence * 100).toFixed(1);
@@ -569,6 +571,78 @@ const applyNMS = (
         setCapturedImage(null);
         setDetectionResult(null);
     };
+    
+    // SIMPAN HASIL DETEKSI
+    const handleSaveResult = async () => {
+        if (!user) {
+            Alert.alert("Error", "Anda harus login untuk menyimpan hasil.");
+            return;
+        }
+        
+        if (!detectionResult || !detectionResult.imageUri || detectionResult.imageUri === '') {
+            Alert.alert("Error", "Tidak ada hasil gambar untuk disimpan.");
+            return;
+        }
+
+        setIsSaving(true);
+
+        const CLOUD_NAME = "deqqxqw6n";
+        const UPLOAD_PRESET = "ml_default";
+        const apiUploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+    
+        try {
+            const base64Img = await FileSystem.readAsStringAsync(detectionResult.imageUri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            const dataUri = `data:image/jpeg;base64,${base64Img}`;
+            
+            const response = await fetch(apiUploadUrl, {
+                method: 'POST',
+                body: JSON.stringify({
+                    file: dataUri,
+                    upload_preset: UPLOAD_PRESET,
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            const responseData = await response.json();
+            
+            if (responseData.error) throw new Error(responseData.error.message);
+            const imageUrl = responseData.secure_url;
+    
+            const { imageUri, ...dataToSave } = detectionResult;
+            const finalData = {
+                ...dataToSave,
+                userId: user.uid,
+                imageUrl: imageUrl,
+                createdAt: serverTimestamp()
+            };
+
+            const historyCollectionRef = collection(db, "users", user.uid, "riwayatDeteksi");
+            await addDoc(historyCollectionRef, finalData);
+    
+            Alert.alert("Berhasil", "Hasil deteksi tersimpan di Riwayat.");
+
+        } catch (error) {
+            console.error("Gagal Menyimpan:", error); 
+            
+            let errorMessage = "Terjadi kesalahan yang tidak diketahui.";
+
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+
+            Alert.alert("Gagal Menyimpan", errorMessage);
+        // -------------------------
+
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (!permission) {
         return <View />;
@@ -596,6 +670,8 @@ const applyNMS = (
     function toggleCameraFacing() {
         setFacing(current => (current === 'back' ? 'front' : 'back'));
     }
+
+    
 
     return (
         <SafeAreaView className="flex-1 bg-sky-50">
@@ -810,10 +886,10 @@ const applyNMS = (
                                 ))}
                             </View>
                         )}
-
-                        <View className="mt-3 pt-3 border-t border-gray-200">
-                            <Text className="text-xs text-gray-500">
-                                📅 Waktu analisis: {new Date(detectionResult.timestamp).toLocaleString('id-ID', {
+                        <View className="mt-3 pt-3 border-t flex-row items-center border-gray-200">
+                            <Ionicons className="mt-2" name="calendar-outline" size={16} color="#9ca3af" />
+                            <Text className="text-xs ml-2 mt-2 text-gray-500 ">
+                                    Waktu analisis: {new Date(detectionResult.timestamp).toLocaleString('id-ID', {
                                     day: '2-digit',
                                     month: 'short',
                                     year: 'numeric',
@@ -822,6 +898,27 @@ const applyNMS = (
                                 })}
                             </Text>
                         </View>
+                        {user && (
+                            <TouchableOpacity
+                                onPress={handleSaveResult}
+                                disabled={isSaving}
+                                activeOpacity={0.8}
+                                // (Gunakan style atau className Anda)
+                                style={[styles.saveButtonBase, styles.saveButtonGreen]} 
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <ActivityIndicator size="small" color="#FFFFFF" /> 
+                                        <Text style={styles.saveButtonText}>Menyimpan...</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Ionicons name="bookmark-outline" size={18} color="white" />
+                                        <Text style={styles.saveButtonText}>Simpan ke Riwayat</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
 
@@ -836,7 +933,7 @@ const applyNMS = (
                             : 'bg-blue-600'
                     }`}
                 >
-                    <View className="flex-row items-center">
+                    <View className="flex-row items-centder">
                         {isProcessing ? (
                             <>
                                 <ActivityIndicator size="small" color="#fff" />
@@ -861,7 +958,7 @@ const applyNMS = (
                         )}
                     </View>
                 </TouchableOpacity>
-
+                
                 {/* Disclaimer */}
                 <View className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <Text className="text-xs text-yellow-800 text-center">
@@ -918,6 +1015,33 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         borderRadius: 999,
         zIndex: 10,
+    },
+
+    saveButtonBase: {
+        marginTop: 16,
+        width: '100%',
+        borderRadius: 20,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.30,
+        shadowRadius: 4.65,
+        elevation: 8,
+    },
+    saveButtonGreen: {
+        backgroundColor: '#059669',
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 14, // text-sm
+        marginLeft: 8, // ml-2
     },
     /* ============================================
     == STYLE YANG DIPERBARUI DIMULAI DARI SINI ==
