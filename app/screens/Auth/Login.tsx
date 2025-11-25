@@ -1,10 +1,10 @@
 //  File Login
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
-import { useState } from 'react';
-import { auth } from '../../services/firebaseConfig';
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { auth } from '../../services/firebaseConfig';
 
 export default function LoginScreen() {
     const navigation = useNavigation();
@@ -43,10 +43,10 @@ export default function LoginScreen() {
         <View className="flex-1 p-8 bg-white">
             {/* Back Button */}
             <View className='flex-row justify-start items-center mt-5'>
-                <TouchableOpacity onPress={() => navigation.navigate('Welcome' as never)}>
+                <TouchableOpacity className="flex-row" onPress={() => navigation.navigate('Welcome' as never)}>
                     <AntDesign name="left" size={24} color="black" />
+                    <Text className='text-lg'>Kembali</Text>
                 </TouchableOpacity>
-                <Text className='text-lg'>Kembali</Text>
             </View>
 
             <View className='justify-center items-center mt-24'>

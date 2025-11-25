@@ -1,11 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Welcome from "../screens/Welcome";
-import RootTabs from "./RootTabs";
-import Wawasan from "../screens/Wawasan";
 import Login from "../screens/Auth/Login";
-import Sign from "../screens/Auth/Sign-Up"
+import Sign from "../screens/Auth/Sign-Up";
 import ProfileEdit from "../screens/ProfileEdit";
+import Wawasan from "../screens/Wawasan/Wawasan";
+import Welcome from "../screens/Welcome";
 import { useAuth } from "../services/AuthContext";
+import RootTabs from "./RootTabs";
+import WawasanStack from "./WawasanStack";
 
 export type RootStackParamList = {
   Welcome: any;
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Login: any;
   Sign: any;
   ProfileEdit: any;
+  WawasanStack: any;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,10 +35,10 @@ export default function RootStack() {
         }}
       />
       <Stack.Screen name="Tabs" component={RootTabs} />
-      <Stack.Screen name="Wawasan" component={Wawasan}
+      <Stack.Screen name="WawasanStack" component={WawasanStack}
         options={{
           headerTitleAlign: "center",
-          headerShown: true,
+          headerShown: false,
           headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
         }}
       />

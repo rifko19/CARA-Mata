@@ -7,7 +7,6 @@ import { useAuth } from '../services/AuthContext';
 import Beranda from "../screens/Beranda";
 import Klinik from "../screens/Klinik";
 import Profile from "../screens/Profile";
-import Riwayat from "../screens/Riwayat/Riwayat";
 import DeteksiStack from "./DeteksiStack";
 import RiwayatStack from "./RiwayatStack";
 
@@ -17,7 +16,7 @@ export type RootTabParamList = {
     DeteksiStack: any;
     Klinik: any;
     Profile: any;
-    Wawasan: any;
+    WawasanStack: any;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();

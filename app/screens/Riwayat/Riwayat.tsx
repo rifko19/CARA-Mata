@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useState, useEffect } from "react";
+// --- TAMBAHKAN 'Alert' ---
+import { FlatList, Text, TouchableOpacity, View, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import { useAuth } from "../../services/AuthContext";
 import { db } from "../../services/firebaseConfig";
+// --- TAMBAHKAN 'deleteDoc' dan 'doc' ---
+import { collection, query, onSnapshot, orderBy, Timestamp, deleteDoc, doc } from "firebase/firestore";
 
-
+// Tipe data (tetap sama)
 type RiwayatItem = {
     id: string;
     prediction: 'cataract' | 'normal';
@@ -18,56 +20,82 @@ type RiwayatItem = {
     const Riwayat = ({ navigation }: any) => {
     const { user } = useAuth();
 
-
+    // State (tetap sama)
     const [riwayatList, setRiwayatList] = useState<RiwayatItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // useEffect (tetap sama)
     useEffect(() => {
-
         if (!user) {
         setIsLoading(false);
         setError("Silakan login untuk melihat riwayat Anda.");
         return;
         }
         setIsLoading(true);
-
         const historyCollectionRef = collection(db, "users", user.uid, "riwayatDeteksi");
         const q = query(historyCollectionRef, orderBy("createdAt", "desc"));
-
         const unsubscribe = onSnapshot(q, (snapshot) => {
         const data: RiwayatItem[] = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as RiwayatItem));
-        
         setRiwayatList(data);
         setIsLoading(false);
         setError(null);
         }, (err) => {
-
         console.error("Error fetching history: ", err);
         setError("Gagal memuat riwayat deteksi.");
         setIsLoading(false);
         });
-
         return () => unsubscribe();
-
     }, [user]);
+
+
+    // --- FUNGSI BARU UNTUK HAPUS RIWAYAT ---
+
+    // Langkah 1: Tampilkan Konfirmasi (Alert)
+    const handleDelete = (itemId: string) => {
+        Alert.alert(
+        "Hapus Riwayat", // Judul
+        "Apakah Anda yakin ingin menghapus hasil deteksi ini? Tindakan ini tidak dapat dibatalkan.", // Pesan
+        [
+            {
+            text: "Batal",
+            style: "cancel"
+            },
+            {
+            text: "Hapus",
+            style: "destructive",
+            onPress: () => proceedWithDelete(itemId)
+            }
+        ]
+        );
+    };
+
+    const proceedWithDelete = async (itemId: string) => {
+        if (!user) return; // Pengecekan keamanan
+
+        try {
+        const docRef = doc(db, "users", user.uid, "riwayatDeteksi", itemId);
+        
+        await deleteDoc(docRef);
+        console.log("Riwayat berhasil dihapus:", itemId);
+
+        } catch (err) {
+        console.error("Error deleting document: ", err);
+        Alert.alert("Error", "Gagal menghapus riwayat. Silakan coba lagi.");
+        }
+    };
 
 
     const formatTanggal = (timestamp: Timestamp) => {
         if (!timestamp) return "Tanggal tidak valid";
-        // Format: 10/5/2023 14:30
         return timestamp.toDate().toLocaleString('id-ID', {
-        day: 'numeric',
-        month: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric', month: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
         });
     };
-
 
     const getTitle = (item: RiwayatItem) => {
         const mata = item.eyeSide === 'left' ? '(Mata Kiri)' : '(Mata Kanan)';
@@ -83,15 +111,13 @@ type RiwayatItem = {
 
     const getStatusColor = (status: "Terdeteksi" | "Tidak Ada") => {
         switch (status) {
-        case "Terdeteksi":
-            return "#FF0000";
-        case "Tidak Ada":
-            return "#10B981";
-        default:
-            return "#7D7D7D";
+        case "Terdeteksi": return "#FF0000";
+        case "Tidak Ada": return "#10B981";
+        default: return "#7D7D7D";
         }
     };
 
+    // --- Render Item untuk FlatList (DISESUAIKAN) ---
 
     const renderItem = ({ item }: { item: RiwayatItem }) => {
         const title = getTitle(item);
@@ -104,13 +130,11 @@ type RiwayatItem = {
             className="bg-white p-4 mb-4 rounded-xl shadow-sm"
         >
             <View className="flex-row justify-between items-center mb-2">
-            
             <View className="flex-1 pr-2">
                 <Text className="text-base font-extrabold text-gray-700" numberOfLines={2}>
                 {title}
                 </Text>
             </View>
-
             <View className="flex-row items-center">
                 <View
                 style={[
@@ -123,17 +147,23 @@ type RiwayatItem = {
                 <Ionicons className="ml-2" name="chevron-forward" size={20} color="#6B7280" />
             </View>
             </View>
-
-            {/* Tanggal */}
+            <View className="flex-row justify-between items-center mt-1">
             <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={16} color="#9ca3af" />
-            <Text className="ml-2 text-sm text-gray-400">{date}</Text>
+                <Ionicons name="calendar-outline" size={16} color="#9ca3af" />
+                <Text className="ml-2 text-sm text-gray-400">{date}</Text>
+            </View>
+            <TouchableOpacity
+                onPress={() => handleDelete(item.id)}
+                style={{ padding: 4 }} 
+            >
+                <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
+            </TouchableOpacity>
             </View>
         </TouchableOpacity>
         );
     };
 
-
+    // --- Tampilan Loading / Error / Kosong (tetap sama) ---
     if (isLoading) {
         return (
         <View style={styles.centerContainer}>
@@ -142,7 +172,6 @@ type RiwayatItem = {
         </View>
         );
     }
-
     if (error) {
         return (
         <View style={styles.centerContainer}>
@@ -151,7 +180,6 @@ type RiwayatItem = {
         </View>
         );
     }
-
     if (!isLoading && riwayatList.length === 0) {
         return (
         <View style={styles.centerContainer}>
@@ -161,6 +189,7 @@ type RiwayatItem = {
         );
     }
 
+    // Tampilan Utama (FlatList)
     return (
         <View className="flex-1 bg-blue-50 px-5 py-6">
         <FlatList
@@ -173,6 +202,7 @@ type RiwayatItem = {
     );
     };
 
+    // StyleSheet (tetap sama)
     const styles = StyleSheet.create({
     centerContainer: {
         flex: 1,

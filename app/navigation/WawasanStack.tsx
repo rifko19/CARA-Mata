@@ -1,33 +1,32 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Riwayat from "../screens/Riwayat/Riwayat";
-import DetailRiwayat from "../screens/Riwayat/DetailRiwayat";
+import Wawasan from "../screens/Wawasan/Wawasan";
+import DetailArtikel from "../screens/Wawasan/DetailArtikel";
 
 
-export type RiwayatStackParamList = {
-    Riwayat: any;
-    DetailRiwayat: any;
+export type WawasanStackParamList = {
+    Wawasan: any;
+    DetailArtikel: any;
     };
 
-    const Stack = createNativeStackNavigator<RiwayatStackParamList>();
+    const Stack = createNativeStackNavigator<WawasanStackParamList>();
 
     export default function DeteksiStack() {
     return (
         <Stack.Navigator
-        initialRouteName="Riwayat"
+        initialRouteName="Wawasan"
         screenOptions={{
             headerShown: true,
             animation: "slide_from_right",
         }}
         >
-        <Stack.Screen name="Riwayat" component={Riwayat} options={{
+        <Stack.Screen name="Wawasan" component={Wawasan} options={{
             headerTitleAlign: "center",
             headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-            title: 'Daftar Riwayat',
         }}/>
-        <Stack.Screen name="DetailRiwayat" component={DetailRiwayat} options={{
+        <Stack.Screen name="DetailArtikel" component={DetailArtikel} options={{
             headerTitleAlign: "center",
             headerTitleStyle: { fontSize: 23, fontWeight: 'bold', color: '#2563EB' },
-            title: 'Detail Hasil',
+            title: 'Detail Artikel',
         }} />
         </Stack.Navigator>
     );

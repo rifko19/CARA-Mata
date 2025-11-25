@@ -82,7 +82,7 @@ export default function Beranda() {
             title: "Wawasan",
             subtitle: "Pahami kesehatan mata",
             bg: "bg-blue-100",
-            to: "Wawasan",
+            to: "WawasanStack",
             requiresAuth: false,
             icon: <MaterialCommunityIcons name="book-alert" size={23} color="#2563EB" />,
         },
@@ -108,8 +108,8 @@ export default function Beranda() {
         }
 
         // Navigate to the feature
-        if (feature.to === "Wawasan") {
-            navigation.navigate('Wawasan');
+        if (feature.to === "WawasanStack") {
+            navigation.navigate('WawasanStack');
         } else {
             tabNav.navigate(feature.to);
         }
