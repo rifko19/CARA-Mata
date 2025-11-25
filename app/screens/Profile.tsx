@@ -1,46 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, ImageBackground, Alert } from 'react-native';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { View, Text, ScrollView, Image, TouchableOpacity, ImageBackground, Alert, ActivityIndicator } from 'react-native';
+import { Feather, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore'; // Pakai onSnapshot agar realtime
 import { useAuth } from '../services/AuthContext'; 
 
 const headerBg = require('../../assets/BG-9.jpg');
 
 export default function ProfileScreen({ navigation }: any) {
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, logout } = useAuth();
+    
     const [userData, setUserData] = useState({
         name: '',
         email: '',
         profilePic: '',
+        gender: '',
+        age: '',
+        bloodType: '',
+        nik: '',
+        phone: ''
     });
+    const [loading, setLoading] = useState(true);
 
+    // Gunakan onSnapshot untuk update REAL-TIME saat data diedit di halaman sebelah
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (user) {
-                const db = getFirestore();
-                const userDocRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(userDocRef);
+        if (!user) return;
 
-                if (docSnap.exists()) {
-                    // Menyimpan data ke state jika data ada
-                    setUserData({
-                        name: docSnap.data().fullName || 'Nama Tidak Tersedia',
-                        email: docSnap.data().email || 'Email Tidak Tersedia',
-                        profilePic: docSnap.data().profilePic || '',
-                    });
-                } else {
-                    Alert.alert('Data tidak ditemukan', 'Pengguna tidak ditemukan di Firestore');
-                }
+        const db = getFirestore();
+        const userDocRef = doc(db, 'users', user.uid);
+
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setUserData({
+                    name: data.fullName || 'Nama Tidak Tersedia',
+                    email: data.email || 'Email Tidak Tersedia',
+                    profilePic: data.profilePic || '',
+                    gender: data.gender || '-',
+                    age: data.age || '-',
+                    bloodType: data.bloodType || '-',
+                    nik: data.nik || '-',
+                    phone: data.phone || '-'
+                });
             }
-        };
+            setLoading(false);
+        }, (error) => {
+            console.error("Gagal ambil data profil:", error);
+            setLoading(false);
+        });
 
-        fetchUserData();
-    }, [user]); 
-    useEffect(() => {
-        if (user && (!userData.profilePic || !userData.name)) {
-            console.log('Pengguna perlu melengkapi data profil');
-        }
-    }, [userData, user, navigation]);
+        return () => unsubscribe();
+    }, [user]);
 
 
     const handleLogout = () => {
@@ -48,19 +57,16 @@ export default function ProfileScreen({ navigation }: any) {
             "Konfirmasi Logout",
             "Anda yakin ingin keluar dari akun ini?",
             [
-                {
-                    text: "Batal",
-                    style: "cancel"
-                },
+                { text: "Batal", style: "cancel" },
                 { 
                     text: "Logout", 
+                    style: 'destructive',
                     onPress: async () => {
                         try {
                             await logout();
-                            navigation.navigate('Welcome');
+                            // Navigasi otomatis diatur oleh AuthContext (ke Welcome/Login)
                         } catch (error) {
-                            console.error("Gagal logout:", error);
-                            Alert.alert("Error", "Gagal melakukan logout. Silakan coba lagi.");
+                            Alert.alert("Error", "Gagal logout.");
                         }
                     } 
                 }
@@ -68,8 +74,19 @@ export default function ProfileScreen({ navigation }: any) {
         );
     };
 
+    // Cek apakah data sudah lengkap
+    const isDataComplete = userData.profilePic && userData.name && userData.nik !== '-' && userData.phone !== '-';
+
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-gray-50">
+                <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+        );
+    }
+
     return (
-        <ScrollView className="flex-1 bg-gray-50">
+        <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
             <ImageBackground
                 source={headerBg}
                 resizeMode="cover"
@@ -98,42 +115,70 @@ export default function ProfileScreen({ navigation }: any) {
                 </View>
             </ImageBackground>
 
+
             {/* Main Content Card */}
-            <View className="bg-white mx-4 mt-12 p-6 rounded-3xl shadow-lg">
-                {/* Account Information Section */}
-                <View className="mb-6">
-                    <View className="flex-row items-center mb-2">
-                        <FontAwesome5 name="user-circle" size={20} color="#6B7280" />
-                        <Text className="text-lg font-bold text-gray-700 ml-2">Informasi Akun</Text>
+            <View className="px-5 mx-2 mt-8 pb-10">
+                
+                {/* Kartu Data Pribadi */}
+                <View className="bg-white p-5 rounded-3xl shadow-sm mb-4">
+                    <View className="flex-row items-center mb-4 border-b border-gray-100 pb-3">
+                        <FontAwesome5 name="id-card" size={18} color="#2563EB" />
+                        <Text className="text-lg font-bold text-gray-800 ml-2">Data Pribadi</Text>
                     </View>
-                    <View className="border-t border-gray-200 pt-4">
-                        <View className="flex-row justify-between items-center p-2">
-                            <Text className="text-gray-600 font-medium">Nama Lengkap</Text>
-                            <Text className="text-gray-800">{userData.name || 'Belum melengkapi'}</Text>
+
+                    <View className="space-y-4">
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">NIK</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.nik}</Text>
                         </View>
-                        <View className="flex-row justify-between items-center p-2">
-                            <Text className="text-gray-600 font-medium">Email</Text>
-                            <Text className="text-gray-800">{userData.email}</Text>
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">Nama</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.name}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">Email</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.email}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">No. Handphone</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.phone}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">Jenis Kelamin</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.gender}</Text>
+                        </View>
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">Usia</Text>
+                            <Text className="text-gray-800 font-semibold">{userData.age} Tahun</Text>
+                        </View>
+                        
+                        <View className="flex-row justify-between">
+                            <Text className="text-gray-500 font-medium">Golongan Darah</Text>
+                            <View className="bg-blue-100 px-3 py-0.5 rounded-md">
+                                <Text className="text-blue-700 font-bold">{userData.bloodType}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
 
-                {/* Tombol Lengkapi Data (Conditional) */}
-                {(!userData.profilePic || !userData.name) && (
+                {/* Tombol Lengkapi Data (HANYA MUNCUL JIKA DATA BELUM LENGKAP) */}
+                {!isDataComplete && (
                     <TouchableOpacity
-                        className="bg-blue-600 w-full rounded-full py-4 items-center shadow-lg mt-4"
+                        className="bg-blue-600 w-full rounded-2xl py-4 flex-row justify-center items-center shadow-lg shadow-blue-200 mb-4"
                         onPress={() => navigation.navigate('ProfileEdit')} 
                     >
-                        <Text className="text-white text-lg font-bold">Lengkapi Data</Text>
+                        <Ionicons name="create-outline" size={20} color="white" style={{marginRight: 8}} />
+                        <Text className="text-white text-lg font-bold">Lengkapi Data Sekarang</Text>
                     </TouchableOpacity>
                 )}
                 
                 {/* Tombol Logout */}
                 <TouchableOpacity
-                    className="bg-red-500 w-full rounded-full py-4 items-center shadow-lg mt-4"
+                    className="bg-red-50 w-full rounded-2xl py-4 flex-row justify-center items-center border border-red-100"
                     onPress={handleLogout}
                 >
-                    <Text className="text-white text-lg font-bold">Logout</Text>
+                    <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{marginRight: 8}} />
+                    <Text className="text-red-500 text-lg font-bold">Keluar Akun</Text>
                 </TouchableOpacity>
 
             </View>

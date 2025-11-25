@@ -51,10 +51,10 @@ export default function SignUpScreen() {
         <View className="flex-1 p-8 bg-white">
             {/* Back Button */}
             <View className='flex-row justify-start items-center mt-5'>
-                <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
+                <TouchableOpacity className='flex-row' onPress={() => navigation.navigate('Login' as never)}>
                     <AntDesign name="left" size={24} color="black" />
+                    <Text className='text-lg'>Kembali</Text>
                 </TouchableOpacity>
-                <Text className='text-lg'>Kembali</Text>
             </View>
 
             <View className='justify-center items-center' style={{ marginTop: 20, marginBottom: 20 }}>
