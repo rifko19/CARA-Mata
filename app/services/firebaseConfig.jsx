@@ -10,13 +10,13 @@ import { getFirestore, FieldValue } from "firebase/firestore";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "AIzaSyDYEbiAccK4TjlgJ0Y5Za5oQ72QiM4bxKU",
-    authDomain: "cara-mata.firebaseapp.com",
-    projectId: "cara-mata",
-    storageBucket: "cara-mata.firebasestorage.app",
-    messagingSenderId: "544680919535",
-    appId: "1:544680919535:web:f79e55ada1e1d388e2361a",
-    measurementId: "G-QSPTZRLXYS"
+    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
     };
 
 // Initialize Firebase

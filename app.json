@@ -20,7 +20,7 @@
       ]
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/CARA-Mata.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -40,11 +40,14 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.anonymous.CARAMata"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0f4120c9-a5bf-4bb4-a18e-dd8d111df12b"
+      }
     }
   }
 }

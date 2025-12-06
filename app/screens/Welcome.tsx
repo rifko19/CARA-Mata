@@ -1,17 +1,16 @@
 import React from 'react';
 import { View, Text, Image, ImageBackground, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../services/AuthContext'; // Sesuaikan path
+import { useAuth } from '../services/AuthContext';
 
-// Dummy logo image - Ganti dengan path logo Anda
-const appLogo = require('../../assets/On-Board-Assets2.png');
+const appLogo = require('../../assets/On-Board.png');
 
 export default function WelcomeScreen() {
     const navigation = useNavigation();
     const { setGuestMode } = useAuth();
 
     const handleGuestMode = () => {
-        setGuestMode(true); // Set guest mode
+        setGuestMode(true);
         navigation.navigate('Tabs' as never);
     };
 
@@ -64,7 +63,7 @@ export default function WelcomeScreen() {
 
                     <TouchableOpacity
                         className="w-full rounded-full py-4 items-center border border-gray-400"
-                        onPress={handleGuestMode} // Changed this line
+                        onPress={handleGuestMode}
                     >
                         <Text className="text-gray-600 text-lg font-bold">
                             Lewati

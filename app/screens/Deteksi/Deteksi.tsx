@@ -81,7 +81,7 @@ export default function Deteksi() {
         try {
             console.log('Loading TensorFlow Lite model...');
             
-            const modelPath = require('../../../assets/models/best_float32.tflite');
+            const modelPath = require('../../../assets/models/best_float32_NEW.tflite');
             console.log('Model path resolved:', modelPath); 
             
             const loadedModel = await loadTensorflowModel(modelPath);
@@ -206,7 +206,8 @@ const parseYOLOOutput = (output: any): Array<{class: string; confidence: number;
             
             if (w < 0.01 || h < 0.01) continue;
             
-            const className = classId === 0 ? 'cataract' : 'normal';
+            const classNames = ['Immature', 'Mature', 'Normal', 'Nuclear'];
+            const className = classNames[classId] || 'unknown';
             
             detections.push({
                 class: className,
@@ -237,7 +238,9 @@ const parseYOLOOutputRaw = (outputArray: number[]): Array<{class: string; confid
     const detections: Array<{class: string; confidence: number; bbox: number[]}> = [];
     const confThreshold = 0.25;
     const numPredictions = 8400;
-    const featuresPerBox = 6;
+    
+    const featuresPerBox = 8;
+    const classNames = ['Immature', 'Mature', 'Normal', 'Nuclear'];
     
     for (let i = 0; i < numPredictions; i++) {
         const baseIdx = i * featuresPerBox;
@@ -248,10 +251,20 @@ const parseYOLOOutputRaw = (outputArray: number[]): Array<{class: string; confid
         let cy = outputArray[baseIdx + 1];
         let w = outputArray[baseIdx + 2];
         let h = outputArray[baseIdx + 3];
-        const objectness = outputArray[baseIdx + 4];
-        const classScore = outputArray[baseIdx + 5];
         
-        if (objectness < confThreshold) continue;
+
+        const classScores = [
+            outputArray[baseIdx + 4], // Immature
+            outputArray[baseIdx + 5], // Mature
+            outputArray[baseIdx + 6], // Normal
+            outputArray[baseIdx + 7]  // Nuclear
+        ];
+        
+        const maxClassScore = Math.max(...classScores);
+        const maxClassIdx = classScores.indexOf(maxClassScore);
+        const className = classNames[maxClassIdx];
+        
+        if (maxClassScore < confThreshold) continue;
         
         if (cx > 2) {
             cx = cx / INPUT_SIZE;
@@ -259,28 +272,20 @@ const parseYOLOOutputRaw = (outputArray: number[]): Array<{class: string; confid
             w = w / INPUT_SIZE;
             h = h / INPUT_SIZE;
         }
-        
+
         if (cx < 0 || cx > 1 || cy < 0 || cy > 1) continue;
         if (w <= 0 || w > 1 || h <= 0 || h > 1) continue;
         if (w < 0.02 || h < 0.02) continue;
         
-        const isCataract = classScore > 0.5;
-        const className = isCataract ? 'cataract' : 'normal';
-        const classConfidence = isCataract ? classScore : (1 - classScore);
-        const finalConfidence = objectness * classConfidence;
-        
-        if (finalConfidence >= confThreshold) {
-            detections.push({
-                class: className,
-                confidence: finalConfidence,
-                bbox: [cx, cy, w, h]
-            });
-        }
+        detections.push({
+            class: className,
+            confidence: maxClassScore,
+            bbox: [cx, cy, w, h]
+        });
     }
     
     return detections.sort((a, b) => b.confidence - a.confidence).slice(0, 100);
 };
-
 
 const jpeg = require('jpeg-js');
 const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
@@ -317,11 +322,11 @@ const preprocessImage = async (imageUri: string): Promise<ModelInputType> => {
         let idx = 0;
         for (let h = 0; h < INPUT_SIZE; h++) {
             for (let w = 0; w < INPUT_SIZE; w++) {
-                const pixelIdx = (h * INPUT_SIZE + w) * 4; 
+                const pixelIdx = (h * INPUT_SIZE + w) * 4;
 
-                rgbData[idx++] = jpegData.data[pixelIdx] / 255.0;     // R
-                rgbData[idx++] = jpegData.data[pixelIdx + 1] / 255.0; // G
-                rgbData[idx++] = jpegData.data[pixelIdx + 2] / 255.0; // B
+                rgbData[idx++] = jpegData.data[pixelIdx] / 255.0;
+                rgbData[idx++] = jpegData.data[pixelIdx + 1] / 255.0;
+                rgbData[idx++] = jpegData.data[pixelIdx + 2] / 255.0;
             }
         }
 
@@ -358,40 +363,74 @@ const runInference = async (
             throw new Error('Invalid model output: first output is null/undefined');
         }
         
-        // Pastikan fungsi 'parseYOLOOutput' ada di file Anda
         const predictions = parseYOLOOutput(outputArray); 
         
-        const cataractDets = predictions.filter(p => 
-            p.class === 'cataract' && p.confidence > 0.25
+        const abnormalDets = predictions.filter(p => 
+            (p.class === 'Immature' || p.class === 'Mature' || p.class === 'Nuclear') 
+            && p.confidence > 0.25
         );
         
-        const hasCataract = cataractDets.length > 0;
-        const maxConfidence = predictions.length > 0 
-            ? Math.max(...predictions.map(p => p.confidence))
-            : 0;
+        const classCounts: {[key: string]: number} = {};
+        const classMaxConf: {[key: string]: number} = {};
+        
+        predictions.forEach(p => {
+            classCounts[p.class] = (classCounts[p.class] || 0) + 1;
+            classMaxConf[p.class] = Math.max(classMaxConf[p.class] || 0, p.confidence);
+        });
+        
+        console.log('📊 Class distribution:', classCounts);
+        console.log('📈 Max confidence per class:', classMaxConf);
+        
+        let dominantClass = 'Normal';
+        let maxCount = 0;
+        
+        Object.keys(classCounts).forEach(className => {
+            if (classCounts[className] > maxCount) {
+                maxCount = classCounts[className];
+                dominantClass = className;
+            }
+        });
+        
+        const severityOrder = ['Mature', 'Nuclear', 'Immature', 'Normal'];
+        
+        if (abnormalDets.length > 0) {
+            for (const severity of severityOrder) {
+                if (classCounts[severity] && classCounts[severity] > 0) {
+                    dominantClass = severity;
+                    break;
+                }
+            }
+        }
 
-        console.log(`✅ Result: ${hasCataract ? 'CATARACT' : 'NORMAL'} (${(maxConfidence * 100).toFixed(1)}%)`);
+        const finalConfidence = classMaxConf[dominantClass] || 
+            (predictions.length > 0 ? Math.max(...predictions.map(p => p.confidence)) : 0);
+        
+        const hasCataract = dominantClass !== 'Normal';
+        const nmsPredictions = applyNMS(predictions, 0.3);
+        const finalDetection = nmsPredictions.length > 0 ? [nmsPredictions[0]] : [];
+
+        console.log(`✅ Result: ${dominantClass.toUpperCase()} (${(finalConfidence * 100).toFixed(1)}%)`);
+        console.log(`   Detections: ${predictions.length} total, ${abnormalDets.length} abnormal`);
         console.log('=== INFERENCE END ===');
 
         return {
-
             imageUri: photoUri, 
-            prediction: hasCataract ? 'cataract' : 'normal',
-            confidence: maxConfidence,
-            detections: predictions.slice(0, 10),
+            prediction: dominantClass,
+            confidence: finalConfidence,
+            detections: predictions.slice(0, 1),
             timestamp: new Date().toISOString(),
             eyeSide: currentEye
         };
         
     } catch (error) {
         console.error('❌ Inference error:', error);
-        throw error; // Biarkan 'takePicture' yang menangani Alert
+        throw error;
     }
 };
 
 const applyNMS = (
     detections: Array<{class: string; confidence: number; bbox: number[]}>,
-    iouThreshold: number = 0.4
+    iouThreshold: number = 0.3
 ): Array<{class: string; confidence: number; bbox: number[]}> => {
     
     if (detections.length === 0) return [];
@@ -443,6 +482,22 @@ const applyNMS = (
         const displayWidth = SCREEN_WIDTH - 40;
         const displayHeight = IMAGE_DISPLAY_HEIGHT;
         
+        // PERUBAHAN 1: Define color mapping untuk 4 class
+        const colorMap: {[key: string]: string} = {
+            'Immature': '#f59e0b',  // Orange - Katarak tahap awal
+            'Mature': '#ef4444',    // Red - Katarak lanjut
+            'Normal': '#10b981',    // Green - Normal
+            'Nuclear': '#8b5cf6'    // Purple - Katarak nuclear
+        };
+        
+        // PERUBAHAN 2: Define emoji/icon untuk setiap class (opsional)
+        const iconMap: {[key: string]: string} = {
+            'Immature': '🟠',
+            'Mature': '🔴',
+            'Normal': '🟢',
+            'Nuclear': '🟣'
+        };
+        
         return (
             <Svg 
                 style={StyleSheet.absoluteFill}
@@ -457,11 +512,28 @@ const applyNMS = (
                     const w = boxWidth * displayWidth;
                     const h = boxHeight * displayHeight;
                     
-                    const isCataract = detection.class === 'cataract';
-                    const color = isCataract ? '#ef4444' : '#10b981';
+                    // PERUBAHAN 3: Gunakan colorMap untuk mendapatkan warna
+                    const color = colorMap[detection.class] || '#6b7280'; // default gray
+                    
+                    // PERUBAHAN 4: Format label dengan nama class yang lebih user-friendly
+                    const labelMap: {[key: string]: string} = {
+                        'Immature': 'Katarak Immature',
+                        'Mature': 'Katarak Mature',
+                        'Normal': 'Normal',
+                        'Nuclear': 'Katarak Nuclear'
+                    };
+                    
+                    const displayLabel = labelMap[detection.class] || detection.class;
+                    const confidenceText = `${(detection.confidence * 100).toFixed(0)}%`;
+                    
+                    // PERUBAHAN 5: Hitung lebar label secara dinamis
+                    const labelText = `${displayLabel} | ${confidenceText}`;
+                    const estimatedLabelWidth = labelText.length * 7;
+                    const labelWidth = Math.max(w, estimatedLabelWidth);
                     
                     return (
                         <React.Fragment key={index}>
+                            {/* Bounding Box */}
                             <Rect
                                 x={x}
                                 y={y}
@@ -472,24 +544,39 @@ const applyNMS = (
                                 fill="transparent"
                             />
                             
+                            {/* Label Background */}
                             <Rect
                                 x={x}
-                                y={y - 24}
-                                width={w}
-                                height={24}
+                                y={y - 26}
+                                width={labelWidth}
+                                height={26}
                                 fill={color}
                                 opacity={0.9}
+                                rx={4} // rounded corners
                             />
                             
+                            {/* Label Text */}
                             <SvgText
-                                x={x + 4}
-                                y={y - 7}
+                                x={x + 6}
+                                y={y - 8}
                                 fill="white"
-                                fontSize="12"
+                                fontSize="13"
                                 fontWeight="bold"
                             >
-                                {`${detection.class === 'cataract' ? 'Katarak | confidence:' : 'Normal | confidence:'} ${(detection.confidence * 100).toFixed(0)}%`}
+                                {labelText}
                             </SvgText>
+                            
+                            {/* BONUS: Badge untuk severity (opsional) */}
+                            {detection.class !== 'Normal' && (
+                                <Rect
+                                    x={x + w - 8}
+                                    y={y + 4}
+                                    width={8}
+                                    height={8}
+                                    fill={color}
+                                    opacity={0.8}
+                                />
+                            )}
                         </React.Fragment>
                     );
                 })}
@@ -510,7 +597,7 @@ const applyNMS = (
             const photo = await cameraRef.current.takePictureAsync({
                 quality: 0.9,
                 base64: false,
-                skipProcessing: false, // false agar sesuai setelan kamera
+                skipProcessing: false,
             });
 
             if (!photo?.uri) {
@@ -544,27 +631,31 @@ const applyNMS = (
     };
     
     const showDetectionResult = (result: DetectionResult) => {
-        const hasCataract = result.prediction === 'cataract';
+        const hasCataract = result.prediction !== 'Normal';
         const confidencePercent = (result.confidence * 100).toFixed(1);
+        
+        let severity = '';
+        if (result.prediction === 'Immature') {
+            severity = 'Katarak Tahap Awal (Immature)';
+        } else if (result.prediction === 'Mature') {
+            severity = 'Katarak Tahap Lanjut (Mature)';
+        } else if (result.prediction === 'Nuclear') {
+            severity = 'Katarak Nuklir';
+        } else {
+            severity = 'Normal';
+        }
 
         let message = '';
         if (hasCataract) {
-            message = `⚠️ Terdeteksi kemungkinan KATARAK\n\nTingkat kepercayaan: ${confidencePercent}%\n\nDitemukan ${result.detections.length} area deteksi.\n\nSilakan segera konsultasi dengan dokter mata untuk pemeriksaan lebih lanjut.`;
+            message = `⚠️ Terdeteksi: ${severity}\n\nTingkat kepercayaan: ${confidencePercent}%\n\nDitemukan ${result.detections.length} area deteksi.\n\nSilakan segera konsultasi dengan dokter mata.`;
         } else {
-            message = `✅ Tidak terdeteksi tanda-tanda katarak\n\nTingkat kepercayaan: ${confidencePercent}%\n\nNamun tetap lakukan pemeriksaan rutin ke dokter mata.`;
+            message = `✅ Tidak terdeteksi tanda-tanda katarak\n\nTingkat kepercayaan: ${confidencePercent}%\n\nTetap lakukan pemeriksaan rutin.`;
         }
 
-        const title = hasCataract ? 'Katarak Terdeteksi' : 'Hasil Normal';
-
-        Alert.alert(
-            title,
-            message,
-            [
-                { text: 'Ambil Foto Lagi', onPress: resetDetection },
-                { text: 'Lihat Detail', onPress: () => {} },
-                { text: 'OK' }
-            ]
-        );
+        Alert.alert(severity, message, [
+            { text: 'Ambil Foto Lagi', onPress: resetDetection },
+            { text: 'OK' }
+        ]);
     };
 
     const resetDetection = () => {
@@ -626,7 +717,7 @@ const applyNMS = (
             Alert.alert("Berhasil", "Hasil deteksi tersimpan di Riwayat.");
 
         } catch (error) {
-            console.error("Gagal Menyimpan:", error); 
+            console.error("Gagal Menyimpan:", error);
             
             let errorMessage = "Terjadi kesalahan yang tidak diketahui.";
 
@@ -858,38 +949,118 @@ const applyNMS = (
                             </View>
                         </View>
                         
+                        <View className={`p-3 rounded-lg mb-3 `}>
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-1">
+                                    <Text className="text-xs text-gray-600 mb-1">Hasil Diagnosis</Text>
+                                    <Text className={`text-lg font-bold ${
+                                        detectionResult.prediction === 'Normal' ? 'text-green-700' :
+                                        detectionResult.prediction === 'Immature' ? 'text-orange-700' :
+                                        detectionResult.prediction === 'Mature' ? 'text-red-700' :
+                                        'text-purple-700'
+                                    }`}>
+                                        {detectionResult.prediction === 'Normal' ? 'Normal' :
+                                        detectionResult.prediction === 'Immature' ? 'Katarak Immature' :
+                                        detectionResult.prediction === 'Mature' ? 'Katarak Mature' :
+                                        'Katarak Nuclear'}
+                                    </Text>
+                                </View>
+                                <View className="items-end">
+                                    <Text className="text-xs text-gray-600 mb-1">Confidence</Text>
+                                    <Text className={`text-2xl font-bold ${
+                                        detectionResult.prediction === 'Normal' ? 'text-green-600' :
+                                        detectionResult.prediction === 'Immature' ? 'text-orange-600' :
+                                        detectionResult.prediction === 'Mature' ? 'text-red-600' :
+                                        'text-purple-600'
+                                    }`}>
+                                        {(detectionResult.confidence * 100).toFixed(1)}%
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
 
                         {detectionResult.detections.length > 0 && (
                             <View className="mt-3">
                                 <Text className="text-sm font-medium text-gray-700 mb-2">
-                                    Deteksi :
+                                    Deteksi ({detectionResult.detections.length} area):
                                 </Text>
-                                {detectionResult.detections.map((detection, index) => (
-                                    <View key={index} className="flex-row justify-between items-center py-2 border-b border-gray-100">
-                                        <View className="flex-row items-center flex-1">
-                                            <View className={`w-2 h-2 rounded-full mr-2 ${
-                                                detection.class === 'cataract' ? 'bg-red-500' : 'bg-green-500'
-                                            }`} />
-                                            <Text className="text-sm text-gray-700">
-                                                {detection.class === 'cataract' ? '🔴 Katarak' : '🟢 Normal '}
-                                            </Text>
+                                {detectionResult.detections.map((detection, index) => {
+                                    const getClassColor = (className: string) => {
+                                        switch(className) {
+                                            case 'Normal': return 'bg-green-500';
+                                            case 'Immature': return 'bg-orange-500';
+                                            case 'Mature': return 'bg-red-500';
+                                            case 'Nuclear': return 'bg-purple-500';
+                                            default: return 'bg-gray-500';
+                                        }
+                                    };
+                                    
+                                    const getClassIcon = (className: string) => {
+                                        switch(className) {
+                                            case 'Normal': return '🟢';
+                                            case 'Immature': return '🟠';
+                                            case 'Mature': return '🔴';
+                                            case 'Nuclear': return '🟣';
+                                            default: return '⚪';
+                                        }
+                                    };
+                                    
+                                    const getClassLabel = (className: string) => {
+                                        switch(className) {
+                                            case 'Normal': return 'Normal';
+                                            case 'Immature': return 'Katarak Immature';
+                                            case 'Mature': return 'Katarak Mature';
+                                            case 'Nuclear': return 'Katarak Nuclear';
+                                            default: return className;
+                                        }
+                                    };
+                                    
+                                    return (
+                                        <View key={index} className="flex-row justify-between items-center py-2 border-b border-gray-100">
+                                            <View className="flex-row items-center flex-1">
+                                                <View className={`w-2 h-2 rounded-full mr-2 ${getClassColor(detection.class)}`} />
+                                                <Text className="text-sm text-gray-700">
+                                                    {getClassIcon(detection.class)} {getClassLabel(detection.class)}
+                                                </Text>
+                                            </View>
+                                            <View className="flex-row items-center">
+                                                <Text className="text-sm font-semibold text-gray-800 mr-2">
+                                                    {(detection.confidence * 100).toFixed(1)}%
+                                                </Text>
+                                                <Text className="text-xs text-gray-500">
+                                                    #{index + 1}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <View className="flex-row items-center">
-                                            <Text className="text-sm font-semibold text-gray-800 mr-2">
-                                                {(detection.confidence * 100).toFixed(1)}%
-                                            </Text>
-                                            <Text className="text-xs text-gray-500">
-                                                #{index + 1}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ))}
+                                    );
+                                })}
                             </View>
                         )}
+
+                        {detectionResult.prediction !== 'Normal' && (
+                            <View className="mt-3 p-3 bg-yellow-50  rounded-lg">
+                                <View className="flex-row items-start">
+                                    <Ionicons name="warning-outline" size={18} color="#d97706" style={{marginTop: 2}} />
+                                    <View className="flex-1 ml-2">
+                                        <Text className="text-xs font-semibold text-yellow-800 mb-1">
+                                            Rekomendasi:
+                                        </Text>
+                                        <Text className="text-xs text-yellow-700">
+                                            {detectionResult.prediction === 'Immature' 
+                                                ? 'Katarak Immature terdeteksi. Segera konsultasi dengan dokter mata untuk monitoring.' :
+                                            detectionResult.prediction === 'Mature'
+                                                ? 'Katarak mature terdeteksi. SEGERA hubungi dokter mata untuk evaluasi dan penanganan.' :
+                                                'Katarak nuclear terdeteksi. Konsultasi dengan dokter mata untuk pemeriksaan lebih lanjut.'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+                        
                         <View className="mt-3 pt-3 border-t flex-row items-center border-gray-200">
                             <Ionicons className="mt-2" name="calendar-outline" size={16} color="#9ca3af" />
-                            <Text className="text-xs ml-2 mt-2 text-gray-500 ">
-                                    Waktu analisis: {new Date(detectionResult.timestamp).toLocaleString('id-ID', {
+                            <Text className="text-xs ml-2 mt-2 text-gray-500">
+                                Waktu analisis: {new Date(detectionResult.timestamp).toLocaleString('id-ID', {
                                     day: '2-digit',
                                     month: 'short',
                                     year: 'numeric',
@@ -898,12 +1069,12 @@ const applyNMS = (
                                 })}
                             </Text>
                         </View>
+                        
                         {user && (
                             <TouchableOpacity
                                 onPress={handleSaveResult}
                                 disabled={isSaving}
                                 activeOpacity={0.8}
-                                // (Gunakan style atau className Anda)
                                 style={[styles.saveButtonBase, styles.saveButtonGreen]} 
                             >
                                 {isSaving ? (
@@ -959,8 +1130,7 @@ const applyNMS = (
                     </View>
                 </TouchableOpacity>
                 
-                {/* Disclaimer */}
-                <View className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <View className="mb-6 bg-yellow-50 rounded-lg p-3">
                     <Text className="text-xs text-yellow-800 text-center">
                         ⚠️ Hasil ini hanya untuk skrining awal. Selalu konsultasi dengan dokter mata profesional untuk diagnosis yang akurat.
                     </Text>
@@ -1043,10 +1213,7 @@ const styles = StyleSheet.create({
         fontSize: 14, // text-sm
         marginLeft: 8, // ml-2
     },
-    /* ============================================
-    == STYLE YANG DIPERBARUI DIMULAI DARI SINI ==
-    ============================================
-    */
+
     zoomContainer: {
         marginTop: 60,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',

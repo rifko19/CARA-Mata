@@ -1,29 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState, useEffect } from "react";
+import { useNavigation } from "@react-navigation/native";
+import { collection, onSnapshot, query, Timestamp } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import {
-    View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    LayoutAnimation,
+    Platform,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    FlatList,
-    ActivityIndicator,
-    StyleSheet,
-    LayoutAnimation,
-    Platform,
-    UIManager
-    } from "react-native";
-    import { useNavigation } from "@react-navigation/native";
-    import { collection, query, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
-    import { db } from "../../services/firebaseConfig"; 
+    UIManager,
+    View
+} from "react-native";
+import { useAuth } from '../../services/AuthContext';
+import { db } from "../../services/firebaseConfig";
 
-    // Aktifkan LayoutAnimation untuk Android
     if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
         UIManager.setLayoutAnimationEnabledExperimental(true);
     }
     }
 
-    // Tipe Data
     type WawasanItem = {
     id: string;
     judul: string;
@@ -35,20 +35,18 @@ import {
     createdAt: Timestamp;
     };
 
+    const { isAuthenticated } = useAuth();
     const Wawasan = () => {
     const navigation = useNavigation<any>();
 
-    // State
     const [allData, setAllData] = useState<WawasanItem[]>([]);
     const [filteredData, setFilteredData] = useState<WawasanItem[]>([]);
     const [activeCategory, setActiveCategory] = useState('artikel'); 
     const [searchText, setSearchText] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     
-    // State khusus untuk FAQ Dropdown (menyimpan ID item yang sedang terbuka)
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    // 1. FETCH DATA
     useEffect(() => {
         setIsLoading(true);
         const wawasanRef = collection(db, "wawasan"); 
@@ -70,16 +68,13 @@ import {
         return () => unsubscribe();
     }, []);
 
-    // 2. FILTER LOGIC
     useEffect(() => {
         let result = allData;
 
-        // Filter Kategori
         if (activeCategory) {
         result = result.filter(item => item.kategori === activeCategory);
         }
 
-        // Filter Search
         if (searchText) {
         const lowerSearch = searchText.toLowerCase();
         result = result.filter(item => 
@@ -92,20 +87,41 @@ import {
         setFilteredData(result);
     }, [allData, activeCategory, searchText]);
 
-    // Fungsi Toggle FAQ
     const toggleExpand = (id: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpandedId(expandedId === id ? null : id); // Tutup jika diklik lagi
+        setExpandedId(expandedId === id ? null : id);
     };
 
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
 
-    // --- RENDER ITEM ---
+            if (!isAuthenticated) {
+                Alert.alert(
+                    'Login Diperlukan',
+                    'Anda harus login untuk mengakses halaman Wawasan.',
+                    [
+                        { text: 'Batal', style: 'cancel' },
+                        { text: 'Login', onPress: () => navigation.navigate('Login' as never) },
+                    ]
+                );
+            }
+        });
+
+        return unsubscribe;
+    }, [navigation, isAuthenticated]);
+
+    if (!isAuthenticated) {
+        return (
+            <View className="flex-1 justify-center items-center bg-white p-4">
+                <Text className="text-lg text-center text-gray-600">Anda harus login untuk mengakses halaman ini.</Text>
+            </View>
+        );
+    }
+
     const renderItem = ({ item }: { item: WawasanItem }) => {
-        // Cek apakah ini mode FAQ
         const isFaqMode = activeCategory === 'faq';
         const isExpanded = expandedId === item.id;
 
-        // TAMPILAN KHUSUS FAQ (DROPDOWN)
         if (isFaqMode) {
             return (
                 <View className="bg-white border border-gray-400 mb-3 rounded-xl mt-3 overflow-hidden shadow-sm">
@@ -114,7 +130,6 @@ import {
                         activeOpacity={0.7}
                         className={`flex-row justify-between items-center p-4 ${isExpanded ? 'bg-gray-200' : 'bg-white'}`}
                     >
-                        {/* Judul sebagai Pertanyaan */}
                         <View className="flex-1 mr-3">
                             <Text className="text-base font-bold text-slate-800 leading-6">
                                 {item.judul}
@@ -132,8 +147,7 @@ import {
                             <Text className="text-sm text-slate-600 leading-6">
                                 {item.isi}
                             </Text>
-                            
-                            {/* Tags FAQ (Opsional) */}
+
                             {item.tags && item.tags.length > 0 && (
                                 <View style={styles.tagsContainer}>
                                     {item.tags.map((tag, index) => (
@@ -149,7 +163,6 @@ import {
             );
         }
 
-        // TAMPILAN ARTIKEL & TIPS (KARTU BIASA -> PINDAH HALAMAN)
         return (
             <TouchableOpacity
                 onPress={() => navigation.navigate('DetailArtikel', { 
@@ -179,14 +192,12 @@ import {
 
     return (
         <View className="flex-1 bg-white">
-        {/* HEADER & SEARCH */}
-        <View className="px-5 pt-4 pb-2 bg-white z-10">
-            <View className="mb-4">
+        <View className="px-5 pt-4 mt-4 pb-2 bg-white z-10">
+            <View className="mb-4 ">
             <Text className="text-2xl font-bold text-slate-800">Edukasi Kesehatan Mata</Text>
             <Text className="text-sm text-slate-500">Pelajari tentang katarak dan kesehatan mata</Text>
             </View>
 
-            {/* Search Bar */}
             <View className="flex-row items-center rounded-xl bg-gray-200 px-4 py-2 mb-6">
             <Ionicons name="search" size={20} color="#94A3B8" />
             <TextInput
@@ -197,7 +208,6 @@ import {
             />
             </View>
 
-            {/* Category Tabs */}
             <View className="flex-row gap-2 mb-2">
             {['artikel', 'tips', 'faq'].map((cat) => {
                 const isActive = activeCategory === cat;
@@ -208,7 +218,7 @@ import {
                     key={cat}
                     onPress={() => {
                         setActiveCategory(cat);
-                        setExpandedId(null); // Reset dropdown saat ganti tab
+                        setExpandedId(null);
                     }}
                     className={`px-4 py-3 rounded-3xl mr-2 ${isActive ? 'bg-blue-600' : 'bg-gray-200'}`}
                 >
@@ -221,7 +231,6 @@ import {
             </View>
         </View>
 
-        {/* LIST KONTEN */}
         {isLoading ? (
             <View className="flex-1 justify-center items-center">
             <ActivityIndicator size="large" color="#2563EB" />
@@ -247,7 +256,6 @@ import {
     );
     };
 
-    // Styling
     const styles = StyleSheet.create({
     tagsContainer: {
         flexDirection: 'row',

@@ -38,7 +38,8 @@
     "react-native-svg": "^15.13.0",
     "@react-native-segmented-control/segmented-control": "2.5.7",
     "@react-native-picker/picker": "2.11.1",
-    "expo-image-picker": "~16.1.4"
+    "expo-image-picker": "~16.1.4",
+    "expo-dev-client": "~5.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

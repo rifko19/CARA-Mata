@@ -107,7 +107,6 @@ export default function Beranda() {
             return;
         }
 
-        // Navigate to the feature
         if (feature.to === "WawasanStack") {
             navigation.navigate('WawasanStack');
         } else {
@@ -187,7 +186,7 @@ export default function Beranda() {
                     <View className="px-4 py-3">
                         <Text className="text-sm leading-5 text-gray-600">
                             CARAMata membantu mendeteksi tanda-tanda awal gangguan mata secara cepat
-                            memakai kamera ponsel dan model analitik sederhana. Informasi bukan pengganti
+                            memakai kamera ponsel dan model AI yang optimal. Hasil diagnosis dari AI hanya untuk deteksi dini bukan pengganti
                             diagnosis dokter. Konsultasikan hasil dengan klinik terdekat untuk tindak lanjut.
                         </Text>
                     </View>
