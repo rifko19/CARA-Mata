@@ -1,22 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import { collection, onSnapshot, query, Timestamp } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    LayoutAnimation,
-    Platform,
-    StyleSheet,
+    View,
     Text,
     TextInput,
     TouchableOpacity,
-    UIManager,
-    View
-} from "react-native";
-import { useAuth } from '../../services/AuthContext';
-import { db } from "../../services/firebaseConfig";
+    FlatList,
+    ActivityIndicator,
+    StyleSheet,
+    LayoutAnimation,
+    Platform,
+    UIManager, Alert
+    } from "react-native";
+    import { useNavigation } from "@react-navigation/native";
+    import { collection, query, onSnapshot, orderBy, Timestamp } from "firebase/firestore";
+    import { db } from "../../services/firebaseConfig";
+    import { useAuth } from '../../services/AuthContext';
 
     if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -35,17 +34,17 @@ import { db } from "../../services/firebaseConfig";
     createdAt: Timestamp;
     };
 
-    const { isAuthenticated } = useAuth();
     const Wawasan = () => {
-    const navigation = useNavigation<any>();
+        const navigation = useNavigation<any>();
+        const { isAuthenticated } = useAuth();
 
-    const [allData, setAllData] = useState<WawasanItem[]>([]);
-    const [filteredData, setFilteredData] = useState<WawasanItem[]>([]);
-    const [activeCategory, setActiveCategory] = useState('artikel'); 
-    const [searchText, setSearchText] = useState('');
-    const [isLoading, setIsLoading] = useState(true);
-    
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+        const [allData, setAllData] = useState<WawasanItem[]>([]);
+        const [filteredData, setFilteredData] = useState<WawasanItem[]>([]);
+        const [activeCategory, setActiveCategory] = useState('artikel'); 
+        const [searchText, setSearchText] = useState('');
+        const [isLoading, setIsLoading] = useState(true);
+        
+        const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         setIsLoading(true);
@@ -89,7 +88,7 @@ import { db } from "../../services/firebaseConfig";
 
     const toggleExpand = (id: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpandedId(expandedId === id ? null : id);
+        setExpandedId(expandedId === id ? null : id); 
     };
 
     useEffect(() => {
