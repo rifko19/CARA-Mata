@@ -1,16 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
-// --- TAMBAHKAN 'Alert' ---
 import { FlatList, Text, TouchableOpacity, View, ActivityIndicator, StyleSheet, Alert } from "react-native";
 import { useAuth } from "../../services/AuthContext";
 import { db } from "../../services/firebaseConfig";
-// --- TAMBAHKAN 'deleteDoc' dan 'doc' ---
 import { collection, query, onSnapshot, orderBy, Timestamp, deleteDoc, doc } from "firebase/firestore";
 
-// Tipe data (tetap sama)
 type RiwayatItem = {
     id: string;
-    prediction: 'cataract' | 'normal';
+    prediction: 'Immature' | 'Mature' | 'normal' | 'Nuclear';
     confidence: number;
     eyeSide: 'left' | 'right';
     imageUrl: string;
@@ -20,12 +17,9 @@ type RiwayatItem = {
     const Riwayat = ({ navigation }: any) => {
     const { user } = useAuth();
 
-    // State (tetap sama)
     const [riwayatList, setRiwayatList] = useState<RiwayatItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // useEffect (tetap sama)
     useEffect(() => {
         if (!user) {
         setIsLoading(false);
@@ -52,13 +46,10 @@ type RiwayatItem = {
     }, [user]);
 
 
-    // --- FUNGSI BARU UNTUK HAPUS RIWAYAT ---
-
-    // Langkah 1: Tampilkan Konfirmasi (Alert)
     const handleDelete = (itemId: string) => {
         Alert.alert(
-        "Hapus Riwayat", // Judul
-        "Apakah Anda yakin ingin menghapus hasil deteksi ini? Tindakan ini tidak dapat dibatalkan.", // Pesan
+        "Hapus Riwayat",
+        "Apakah Anda yakin ingin menghapus hasil deteksi ini? Tindakan ini tidak dapat dibatalkan.",
         [
             {
             text: "Batal",
@@ -74,7 +65,7 @@ type RiwayatItem = {
     };
 
     const proceedWithDelete = async (itemId: string) => {
-        if (!user) return; // Pengecekan keamanan
+        if (!user) return;
 
         try {
         const docRef = doc(db, "users", user.uid, "riwayatDeteksi", itemId);
@@ -98,72 +89,105 @@ type RiwayatItem = {
     };
 
     const getTitle = (item: RiwayatItem) => {
-        const mata = item.eyeSide === 'left' ? '(Mata Kiri)' : '(Mata Kanan)';
-        if (item.prediction === 'cataract') {
-        return `Katarak Terdeteksi ${mata}`;
-        }
-        return `Mata Normal ${mata}`;
-    };
-
-    const getStatusText = (prediction: 'cataract' | 'normal') => {
-        return prediction === 'cataract' ? "Terdeteksi" : "Tidak Ada";
-    };
-
-    const getStatusColor = (status: "Terdeteksi" | "Tidak Ada") => {
-        switch (status) {
-        case "Terdeteksi": return "#FF0000";
-        case "Tidak Ada": return "#10B981";
-        default: return "#7D7D7D";
+        const mata = item.eyeSide === 'left' ? 'Mata Kiri' : 'Mata Kanan';
+        
+        switch(item.prediction) {
+            case 'normal':
+                return `${mata} - Normal`;
+            case 'Immature':
+                return `${mata} - Katarak Immature`;
+            case 'Mature':
+                return `${mata} - Katarak Mature`;
+            case 'Nuclear':
+                return `${mata} - Katarak Nuclear`;
+            default:
+                return `${mata} - ${item.prediction}`;
         }
     };
 
-    // --- Render Item untuk FlatList (DISESUAIKAN) ---
+    const getStatusText = (prediction: 'Immature' | 'Mature' | 'normal' | 'Nuclear') => {
+        switch(prediction) {
+            case 'normal':
+                return "Normal";
+            case 'Immature':
+                return "Katarak Awal";
+            case 'Mature':
+                return "Katarak Lanjut";
+            case 'Nuclear':
+                return "Katarak Nuclear";
+            default:
+                return prediction;
+        }
+    };
+
+   const getStatusColor = (prediction: 'Immature' | 'Mature' | 'normal' | 'Nuclear') => {
+        switch (prediction) {
+            case 'normal':
+                return "#10B981";  // Green
+            case 'Immature':
+                return "#F59E0B";  // Orange
+            case 'Mature':
+                return "#EF4444";  // Red
+            case 'Nuclear':
+                return "#8B5CF6";  // Purple
+            default:
+                return "#6B7280";  // Gray
+        }
+    };
 
     const renderItem = ({ item }: { item: RiwayatItem }) => {
         const title = getTitle(item);
-        const status = getStatusText(item.prediction);
+        const statusText = getStatusText(item.prediction);
         const date = formatTanggal(item.createdAt);
+        const statusColor = getStatusColor(item.prediction);
 
         return (
-        <TouchableOpacity
-            onPress={() => navigation.navigate("DetailRiwayat", { riwayatId: item.id })}
-            className="bg-white p-4 mb-4 rounded-xl shadow-sm"
-        >
-            <View className="flex-row justify-between items-center mb-2">
-            <View className="flex-1 pr-2">
-                <Text className="text-base font-extrabold text-gray-700" numberOfLines={2}>
-                {title}
-                </Text>
-            </View>
-            <View className="flex-row items-center">
-                <View
-                style={[
-                    styles.statusTag,
-                    { backgroundColor: getStatusColor(status) }
-                ]}
-                >
-                <Text className="text-white text-xs font-bold">{status}</Text>
-                </View>
-                <Ionicons className="ml-2" name="chevron-forward" size={20} color="#6B7280" />
-            </View>
-            </View>
-            <View className="flex-row justify-between items-center mt-1">
-            <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={16} color="#9ca3af" />
-                <Text className="ml-2 text-sm text-gray-400">{date}</Text>
-            </View>
             <TouchableOpacity
-                onPress={() => handleDelete(item.id)}
-                style={{ padding: 4 }} 
+                onPress={() => navigation.navigate("DetailRiwayat", { riwayatId: item.id })}
+                className="bg-white p-4 mb-4 rounded-xl shadow-sm"
             >
-                <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
+                <View className="flex-row justify-between items-start mb-2">
+                    <View className="flex-1 pr-2">
+                        <Text className="text-base font-extrabold text-gray-800" numberOfLines={2}>
+                            {title}
+                        </Text>
+                    </View>
+
+                    <View
+                        style={[
+                            styles.statusTag,
+                            { backgroundColor: statusColor }
+                        ]}
+                    >
+                        <Text className="text-white text-xs font-bold">{statusText}</Text>
+                    </View>
+                    <Ionicons className="ml-2" name="chevron-forward" size={20} color="#6B7280" />
+                </View>
+
+                <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                    <View className="flex-row items-center">
+                        <Ionicons name="calendar-outline" size={16} color="#9ca3af" />
+                        <Text className="ml-2 text-sm text-gray-500">{date}</Text>
+                    </View>
+                    
+                    <View className="flex-row items-center gap-2">
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate("DetailRiwayat", { riwayatId: item.id })}
+                            style={{ padding: 4 }}
+                        >
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            onPress={() => handleDelete(item.id)}
+                            style={{ padding: 4 }}
+                        >
+                            <Ionicons name="trash-bin-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </TouchableOpacity>
-            </View>
-        </TouchableOpacity>
         );
     };
-
-    // --- Tampilan Loading / Error / Kosong (tetap sama) ---
     if (isLoading) {
         return (
         <View style={styles.centerContainer}>
@@ -189,7 +213,6 @@ type RiwayatItem = {
         );
     }
 
-    // Tampilan Utama (FlatList)
     return (
         <View className="flex-1 bg-blue-50 px-5 py-6">
         <FlatList
@@ -202,7 +225,6 @@ type RiwayatItem = {
     );
     };
 
-    // StyleSheet (tetap sama)
     const styles = StyleSheet.create({
     centerContainer: {
         flex: 1,

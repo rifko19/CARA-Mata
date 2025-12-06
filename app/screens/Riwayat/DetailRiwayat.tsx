@@ -1,21 +1,20 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
 import { ScrollView, Text, View, ActivityIndicator, StyleSheet, Image, Dimensions } from "react-native";
-import { useAuth } from "../../services/AuthContext"; // Sesuaikan path
-import { db } from "../../services/firebaseConfig"; // Sesuaikan path
+import { useAuth } from "../../services/AuthContext";
+import { db } from "../../services/firebaseConfig";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { useRoute } from "@react-navigation/native";
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
 
-// Tipe data (tetap sama)
 type DetectionBox = {
     bbox: [number, number, number, number];
-    class: 'cataract' | 'normal';
+    class: 'Immature' | 'Mature' | 'normal' | 'Nuclear';
     confidence: number;
     };
     type RiwayatItem = {
     id: string;
-    prediction: 'cataract' | 'normal';
+    prediction: 'Immature' | 'Mature' | 'normal' | 'Nuclear';
     confidence: number;
     eyeSide: 'left' | 'right';
     imageUrl: string;
@@ -24,7 +23,6 @@ type DetectionBox = {
     timestamp: string;
     };
 
-    // Kalkulasi layout (tetap sama)
     const { width } = Dimensions.get('window');
     const IMAGE_CONTAINER_WIDTH = width - 40; 
     const IMAGE_HEIGHT = IMAGE_CONTAINER_WIDTH; 
@@ -34,12 +32,10 @@ type DetectionBox = {
     const route = useRoute();
     const { riwayatId } = route.params as { riwayatId: string };
 
-    // State (tetap sama)
     const [riwayat, setRiwayat] = useState<RiwayatItem | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // useEffect (logika fetch data tetap sama)
     useEffect(() => {
         if (!user || !riwayatId) {
         setError("Data tidak valid atau Anda tidak login.");
@@ -67,7 +63,6 @@ type DetectionBox = {
     }, [user, riwayatId]);
 
 
-    // --- Helper Functions (tetap sama) ---
     const formatTanggal = (timestamp: Timestamp) => {
         if (!timestamp) return "Tanggal tidak valid";
         return timestamp.toDate().toLocaleString('id-ID', {
@@ -76,51 +71,128 @@ type DetectionBox = {
         });
     };
 
-    // --- 👇 FUNGSI INI DIPERBAIKI (MENGGUNAKAN HEX CODE) 👇 ---
-    const getStatusInfo = (prediction: 'cataract' | 'normal') => {
-        if (prediction === 'cataract') {
-        return {
-            text: "Katarak Terdeteksi",
-            textColor: '#991B1B', // Hex untuk text-red-900
-            bgColor: '#FEF2F2',   // Hex untuk bg-red-50
-            borderColor: '#FEE2E2' // Hex untuk border-red-200
-        };
+    const getStatusInfo = (prediction: 'Immature' | 'Mature' | 'normal' | 'Nuclear') => {
+        switch(prediction) {
+            case 'normal':
+                return {
+                    text: "Mata Normal",
+                    icon: "checkmark-circle",
+                    textColor: '#065F46',
+                    bgColor: '#ECFDF5',
+                    borderColor: '#D1FAE5'
+                };
+            case 'Immature':
+                return {
+                    text: "Katarak Tahap Awal",
+                    icon: "warning",
+                    textColor: '#92400E',
+                    bgColor: '#FFFBEB',
+                    borderColor: '#FEF3C7'
+                };
+            case 'Mature':
+                return {
+                    text: "Katarak Tahap Lanjut",
+                    icon: "alert-circle",
+                    textColor: '#991B1B',
+                    bgColor: '#FEF2F2',
+                    borderColor: '#FEE2E2'
+                };
+            case 'Nuclear':
+                return {
+                    text: "Katarak Nuclear",
+                    icon: "eyedrop",
+                    textColor: '#581C87',
+                    bgColor: '#FAF5FF',
+                    borderColor: '#EDE9FE'
+                };
+            default:
+                return {
+                    text: prediction,
+                    icon: "help-circle",
+                    textColor: '#1F2937',
+                    bgColor: '#F9FAFB',
+                    borderColor: '#E5E7EB'
+                };
         }
-        return {
-        text: "Mata Normal",
-        textColor: '#065F46', // Hex untuk text-emerald-900
-        bgColor: '#ECFDF5',   // Hex untuk bg-emerald-50
-        borderColor: '#D1FAE5' // Hex untuk border-emerald-200
-        };
     };
 
 
-    const renderBoundingBoxes = () => {
-        if (!riwayat || !riwayat.detections) return null;
-        return riwayat.detections.map((detection, index) => {
-        const [cx, cy, w, h] = detection.bbox;
-        const color = detection.class === 'cataract' ? '#FF0000' : '#10B981';
-        const x = (cx - w / 2) * IMAGE_CONTAINER_WIDTH;
-        const y = (cy - h / 2) * IMAGE_HEIGHT;
-        const width = w * IMAGE_CONTAINER_WIDTH;
-        const height = h * IMAGE_HEIGHT;
-        const confidenceText = `${(detection.confidence * 100).toFixed(0)}%`;
-        if (x < 0 || y < 0 || (x + width) > IMAGE_CONTAINER_WIDTH || (y + height) > IMAGE_HEIGHT) {
-            return null;
+const renderBoundingBoxes = () => {
+    if (!riwayat || !riwayat.detections) return null;
+    
+    const getClassColor = (className: string) => {
+        switch(className) {
+            case 'normal': return '#10B981';    // Green
+            case 'Immature': return '#F59E0B';  // Orange
+            case 'Mature': return '#EF4444';    // Red
+            case 'Nuclear': return '#8B5CF6';   // Purple
+            default: return '#6B7280';          // Gray
         }
-        return (
-            <React.Fragment key={index}>
-            <Rect x={x} y={y} width={width} height={height} stroke={color} strokeWidth={2.5} fill="transparent" />
-            <Rect x={x} y={y - 18} width={width} height={18} fill={color} />
-            <SvgText x={x + 5} y={y - 5} fill="#FFFFFF" fontSize="10" fontWeight="bold">
-                {`${detection.class === 'cataract' ? 'Katarak' : 'Normal'} | ${confidenceText}`}
-            </SvgText>
-            </React.Fragment>
-        );
+    };
+    
+    const getClassLabel = (className: string) => {
+        switch(className) {
+            case 'normal': return 'Normal';
+            case 'Immature': return 'Katarak Awal';
+            case 'Mature': return 'Katarak Lanjut';
+            case 'Nuclear': return 'Katarak Nuclear';
+            default: return className;
+        }
+    };
+    
+    return riwayat.detections.map((detection, index) => {
+            const [cx, cy, w, h] = detection.bbox;
+            const color = getClassColor(detection.class);
+            const label = getClassLabel(detection.class);
+            
+            const x = (cx - w / 2) * IMAGE_CONTAINER_WIDTH;
+            const y = (cy - h / 2) * IMAGE_HEIGHT;
+            const width = w * IMAGE_CONTAINER_WIDTH;
+            const height = h * IMAGE_HEIGHT;
+            const confidenceText = `${(detection.confidence * 100).toFixed(0)}%`;
+            
+            if (x < 0 || y < 0 || (x + width) > IMAGE_CONTAINER_WIDTH || (y + height) > IMAGE_HEIGHT) {
+                return null;
+            }
+            
+            return (
+                <React.Fragment key={index}>
+                    {/* Bounding Box */}
+                    <Rect 
+                        x={x} 
+                        y={y} 
+                        width={width} 
+                        height={height} 
+                        stroke={color} 
+                        strokeWidth={3} 
+                        fill="transparent" 
+                    />
+                    
+                    {/* Label Background */}
+                    <Rect 
+                        x={x} 
+                        y={y - 22} 
+                        width={Math.max(width, 100)} 
+                        height={22} 
+                        fill={color} 
+                        rx={4}
+                    />
+                    
+                    {/* Label Text */}
+                    <SvgText 
+                        x={x + 5} 
+                        y={y - 7} 
+                        fill="#FFFFFF" 
+                        fontSize="11" 
+                        fontWeight="bold"
+                    >
+                        {`${label} | ${confidenceText}`}
+                    </SvgText>
+                </React.Fragment>
+            );
         });
     };
 
-    // --- Tampilan Loading / Error (tetap sama) ---
     if (isLoading) {
         return (
         <View style={styles.centerContainer}>
@@ -145,16 +217,12 @@ type DetectionBox = {
         );
     }
 
-    // --- Tampilan Utama Halaman Detail ---
-    
-    // Panggil fungsi yang sudah diperbaiki
     const statusInfo = getStatusInfo(riwayat.prediction);
 
     return (
         <ScrollView className="flex-1 bg-blue-50">
         <View className="p-5">
             
-            {/* 1. KARTU GAMBAR (Kode Image sudah diperbaiki sebelumnya) */}
             <View 
             className="bg-slate-900 rounded-2xl shadow-sm overflow-hidden"
             style={{ width: IMAGE_CONTAINER_WIDTH, height: IMAGE_HEIGHT }} 
@@ -218,45 +286,122 @@ type DetectionBox = {
             </View>
             </View>
 
-            {/* --- 👇 4. KARTU DETAIL DETEKSI (PERBAIKAN WARNA) 👇 --- */}
-            {riwayat.detections && riwayat.detections.length > 0 && (
-            <View className="mt-4 bg-white rounded-2xl p-4 shadow-sm">
-                <Text className="text-base font-bold text-gray-800 mb-3">
-                Objek Terdeteksi ({riwayat.detections.length})
+{riwayat.detections && riwayat.detections.length > 0 && (
+    <View className="mt-4 bg-white rounded-2xl p-4 shadow-sm">
+        <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-base font-bold text-gray-800">
+                Objek Terdeteksi
+            </Text>
+            <View className="bg-blue-100 px-3 py-1 rounded-full">
+                <Text className="text-blue-700 text-xs font-bold">
+                    {riwayat.detections.length} area
                 </Text>
+            </View>
+        </View>
+        
+        {riwayat.detections.map((det, idx) => {
+                const getDetectionColor = (className: string) => {
+                    switch(className) {
+                        case 'normal':
+                            return { 
+                                bg: '#ECFDF5',
+                                text: '#065F46',
+                                dotColor: '#10B981',
+                                icon: '🟢',
+                                label: 'Normal'
+                            };
+                        case 'Immature':
+                            return { 
+                                bg: '#FFFBEB',
+                                text: '#92400E',
+                                dotColor: '#F59E0B',
+                                icon: '🟠',
+                                label: 'Katarak Awal'
+                            };
+                        case 'Mature':
+                            return { 
+                                bg: '#FEF2F2',
+                                text: '#991B1B',
+                                dotColor: '#EF4444',
+                                icon: '🔴',
+                                label: 'Katarak Lanjut'
+                            };
+                        case 'Nuclear':
+                            return { 
+                                bg: '#FAF5FF',
+                                text: '#581C87',
+                                dotColor: '#8B5CF6',
+                                icon: '🟣',
+                                label: 'Katarak Nuclear'
+                            };
+                        default:
+                            return { 
+                                bg: '#F9FAFB',
+                                text: '#1F2937',
+                                dotColor: '#6B7280',
+                                icon: '⚪',
+                                label: className
+                            };
+                    }
+                };
                 
-                {riwayat.detections.map((det, idx) => {
-                // Dapatkan info warna dinamis
-                const detColor = det.class === 'cataract' 
-                    ? { bg: '#FEF2F2', text: '#991B1B' } // Warna Merah
-                    : { bg: '#ECFDF5', text: '#065F46' }; // Warna Hijau
+                const detColor = getDetectionColor(det.class);
 
                 return (
                     <View 
-                    key={idx} 
-                    className={`flex-row justify-between items-center p-3 rounded-lg ${
-                        idx < riwayat.detections.length - 1 ? 'mb-2' : ''
-                    }`}
-                    style={{ backgroundColor: detColor.bg }} // <-- Terapkan warna BG
+                        key={idx} 
+                        className={`flex-row items-center p-3 rounded-lg ${
+                            idx < riwayat.detections.length - 1 ? 'mb-2' : ''
+                        }`}
+                        style={{ backgroundColor: detColor.bg }}
                     >
-                    <Text 
-                        className={`font-semibold`}
-                        style={{ color: detColor.text }} // <-- Terapkan warna Teks
-                    >
-                        {idx + 1}. {det.class === 'cataract' ? 'Katarak' : 'Normal'}
-                    </Text>
-                    <Text 
-                        className={`font-bold text-sm`}
-                        style={{ color: detColor.text }} // <-- Terapkan warna Teks
-                    >
-                        {(det.confidence * 100).toFixed(0)}%
-                    </Text>
+                        <View 
+                            style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: detColor.dotColor,
+                                marginRight: 12
+                            }}
+                        />
+                        
+                        <View className="flex-1">
+                            <View className="flex-row items-center">
+                                <Text style={{ fontSize: 14, marginRight: 6 }}>
+                                    {detColor.icon}
+                                </Text>
+                                <Text 
+                                    className="font-semibold text-sm"
+                                    style={{ color: detColor.text }}
+                                >
+                                    {detColor.label}
+                                </Text>
+                            </View>
+                            <Text className="text-xs text-gray-500 mt-0.5">
+                                Area #{idx + 1}
+                            </Text>
+                        </View>
+                        
+                        <View 
+                            className="px-3 py-1.5 rounded-full"
+                            style={{ 
+                                backgroundColor: 'white',
+                                borderWidth: 1.5,
+                                borderColor: detColor.dotColor
+                            }}
+                        >
+                            <Text 
+                                className="font-bold text-xs"
+                                style={{ color: detColor.text }}
+                            >
+                                {(det.confidence * 100).toFixed(0)}%
+                            </Text>
+                        </View>
                     </View>
                 );
-                })}
-            </View>
-            )}
-            {/* --- 👆 KARTU DETAIL DETEKSI (PERBAIKAN WARNA) 👆 --- */}
+            })}
+        </View>
+    )}
 
         </View>
         </ScrollView>
